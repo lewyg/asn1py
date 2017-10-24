@@ -32,7 +32,7 @@ class ASN1Type:
         if isinstance(value, self.__class__):
             value = value.get()
 
-        if self._check_base_constraints(value) and self.check_constraints(value):
+        if self._check_type(value) and self.check_constraints(value):
             self._set_value(value)
         else:
             raise Exception("Constraint failed! {} object cannot be {}".format(type(self).__name__, value))
@@ -40,7 +40,7 @@ class ASN1Type:
     def check_constraints(self, value):
         return True
 
-    def _check_base_constraints(self, value):
+    def _check_type(self, value):
         return True
 
     def _set_value(self, value):
@@ -57,7 +57,6 @@ class ASN1Type:
 
 
 class ASN1SimpleType(ASN1Type):
-    # built-in type for value
     simple_type = object
 
     def __init__(self):
@@ -66,7 +65,7 @@ class ASN1SimpleType(ASN1Type):
     def get(self):
         return self._value
 
-    def _check_base_constraints(self, value):
+    def _check_type(self, value):
         return isinstance(value, self.simple_type)
 
     def _set_value(self, value):
@@ -74,16 +73,16 @@ class ASN1SimpleType(ASN1Type):
 
 
 class ASN1SimpleSizedType(ASN1SimpleType):
-    size = 0
+    max_size = 0
 
     def _check_base_constraints(self, value):
-        return isinstance(value, self.simple_type) and len(value) <= self.size
+        return isinstance(value, self.simple_type) and len(value) <= self.max_size
 
 
-class ASN1ComplexType(ASN1Type):
+class ASN1ComposedType(ASN1Type):
     exists = dict()
 
-    def _check_base_constraints(self, value):
+    def _check_type(self, value):
         return isinstance(value, self.__class__)
 
     def _set_value(self, value):
@@ -114,21 +113,21 @@ class ASN1ComplexType(ASN1Type):
 
 
 class ASN1ArrayOfType(ASN1Type):
-    size = 0
-    kind = object
+    max_size = 0
+    element_type = object
 
     def __init__(self):
         self.list = list()
         self._init_list()
 
     def _init_list(self):
-        for i in range(self.size):
-            self.list.append(self.kind())
+        for i in range(self.max_size):
+            self.list.append(self.element_type())
 
     def get(self):
         return self.list
 
-    def _check_base_constraints(self, value):
+    def _check_type(self, value):
         return isinstance(value, list)
 
     def _set_value(self, value):
@@ -136,25 +135,32 @@ class ASN1ArrayOfType(ASN1Type):
             self.list[i].set(elem)
 
     def __getitem__(self, item):
-        if isinstance(item, int) and len(self.list) >= item:
+        if self._check_index(item):
             return self.list[item]
 
         else:
-            raise Exception("Max size of {} is {}".format(type(self).__name__, self.size))
+            raise Exception("Max size of {} is {}".format(type(self).__name__, len(self)))
 
     def __setitem__(self, key, value):
-        if isinstance(key, int) and len(self.list) >= key:
+        if self._check_index(key):
             self.list[key] = value
 
         else:
-            raise Exception("Max size of {} is {}".format(type(self).__name__, self.size))
+            raise Exception("Max size of {} is {}".format(type(self).__name__, len(self)))
+
+    def _check_index(self, index):
+        return isinstance(index, int) and len(self) > index
+
+    def __len__(self):
+        return len(self.list)
 
     def __iter__(self):
         self._n = 0
+
         return self
 
     def __next__(self):
-        if self._n < self.size:
+        if self._n < len(self):
             element = self[self._n]
             self._n += 1
 
@@ -179,14 +185,11 @@ class ASN1ArrayOfType(ASN1Type):
                 return True
 
 
-class Enumerated(ASN1SimpleType):
-    class Value(Enum):
-        NONE = None
-
-    simple_type = Value
-
-    def __init__(self):
-        self._value = self.Value.NONE
+# todo:
+class Enumerated(Enum):
+    @property
+    def val(self):
+        return self.value
 
 
 class Null(ASN1SimpleType):
@@ -214,11 +217,6 @@ class Boolean(ASN1SimpleType):
 class BitString(ASN1SimpleSizedType):
     simple_type = bytes
 
-    def _check_base_constraints(self, value):
-        bytes_size = self._get_bytes_size_from_bits(self.size)
-
-        return super()._check_base_constraints(value) and len(value) <= bytes_size
-
     @staticmethod
     def _get_bytes_size_from_bits(bits):
         bytes_size = (bits + WORD_SIZE + 1) // WORD_SIZE
@@ -241,15 +239,15 @@ class NumericString(ASN1SimpleSizedType):
         return super()._check_base_constraints(value) and str(value).isdigit()
 
 
-class Sequence(ASN1ComplexType):
+class Sequence(ASN1ComposedType):
     pass
 
 
-class Set(ASN1ComplexType):
+class Set(ASN1ComposedType):
     pass
 
 
-class Choice(ASN1ComplexType):
+class Choice(ASN1ComposedType):
     def _set_choice(self, val):
         for choice in self.exists:
             self.exists[choice] = False

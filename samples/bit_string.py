@@ -5,7 +5,7 @@ from asn1 import BitString
 
 
 class MyBit(BitString):
-    size = 20
+    max_size = 20
 
     def check_constraints(self, value):
         bytes_size = self._get_bytes_size_from_bits(20)

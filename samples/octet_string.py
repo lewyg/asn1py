@@ -5,7 +5,7 @@ from asn1 import OctetString
 
 
 class MyOct(OctetString):
-    size = 4
+    max_size = 4
 
     def check_constraints(self, value):
         result = len(value) == 4

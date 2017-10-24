@@ -5,7 +5,7 @@ from asn1 import NumericString
 
 
 class MyNumString(NumericString):
-    size = 3
+    max_size = 3
 
     def check_constraints(self, value):
         result = len(value) == 3

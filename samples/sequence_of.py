@@ -32,8 +32,8 @@ class MySqOfElement(Sequence):
 
 
 class MySqOf(SequenceOf):
-    size = 25
-    kind = MySqOfElement
+    max_size = 2
+    element_type = MySqOfElement
 
     def check_constraints(self, value):
         result = 1 <= len(value) <= 20
