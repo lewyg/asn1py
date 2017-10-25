@@ -55,6 +55,12 @@ class ASN1Type:
     def __repr__(self):
         return str(self.get())
 
+    def encode(self):
+        return b''
+
+    def decode(self, bytes):
+        pass
+
 
 class ASN1SimpleType(ASN1Type):
     simple_type = object
@@ -204,6 +210,9 @@ class Null(ASN1SimpleType):
 
 class Integer(ASN1SimpleType):
     simple_type = int
+
+    def encode(self):
+        return self._value.to_bytes(WORD_SIZE, 'big')
 
 
 class Real(ASN1SimpleType):
