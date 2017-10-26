@@ -135,7 +135,7 @@ class ASN1SimpleType(ASN1Type):
 
 
 class ASN1ComposedType(ASN1Type):
-    exists = dict()
+    attributes = list()
 
     def _check_type(self, value):
         return isinstance(value, self.__class__)
@@ -145,13 +145,18 @@ class ASN1ComposedType(ASN1Type):
             getattr(self, attr).set(val)
 
     def __getattribute__(self, item):
-        exists = object.__getattribute__(self, 'exists')
-        can_get = exists[item] if item in exists else True
+        attributes = object.__getattribute__(self, 'attributes')
+        attribute = object.__getattribute__(self, item)
 
-        if can_get:
-            return object.__getattribute__(self, item)
+        if attribute in attributes:
+            return attribute.get()
         else:
-            raise Exception("Attribute {} does not exist!".format(item))
+            raise Exception("Attribute {} not exists!".format(item))
+
+    def __setattr__(self, key, value):
+        attribute = object.__getattribute__(self, key)
+
+        attribute.set(value)
 
     def __eq__(self, other):
         if not isinstance(other, type(self)):
@@ -240,7 +245,6 @@ class ASN1ArrayOfType(ASN1Type):
                 return True
 
 
-# todo:
 class Enumerated(Enum):
     @property
     def val(self):
@@ -294,14 +298,13 @@ class BitString(ASN1SimpleType):
 
 
 class OctetString(ASN1SimpleType):
-    simple_type = bytes
+    simple_type = bytearray
 
 
 class IA5String(ASN1SimpleType):
     simple_type = str
 
 
-# todo: only digits?
 class NumericString(ASN1SimpleType):
     simple_type = str
 
