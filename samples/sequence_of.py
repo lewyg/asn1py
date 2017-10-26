@@ -32,7 +32,7 @@ class MySqOfElement(Sequence):
 
 
 class MySqOf(SequenceOf):
-    max_size = 2
+    max_size = 25
     element_type = MySqOfElement
 
     def check_constraints(self, value):

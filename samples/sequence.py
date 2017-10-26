@@ -20,7 +20,7 @@ class MyStruct(Sequence):
     def __init__(self):
         self.a = MyStruct_a()
         self.b = Integer()
-        self.c = MyEnum()
+        self.c = MyEnum.NONE
 
         self.exists = dict(
             b=True,

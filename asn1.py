@@ -78,13 +78,6 @@ class ASN1SimpleType(ASN1Type):
         self._value = value
 
 
-class ASN1SimpleSizedType(ASN1SimpleType):
-    max_size = 0
-
-    def _check_base_constraints(self, value):
-        return isinstance(value, self.simple_type) and len(value) <= self.max_size
-
-
 class ASN1ComposedType(ASN1Type):
     exists = dict()
 
@@ -218,13 +211,33 @@ class Integer(ASN1SimpleType):
 class Real(ASN1SimpleType):
     simple_type = float
 
+    def _check_type(self, value):
+        return super()._check_type(value) or isinstance(value, int)
+
+    def _set_value(self, value):
+        self._value = float(value)
+
 
 class Boolean(ASN1SimpleType):
     simple_type = bool
 
+    def _check_type(self, value):
+        return bool(value)
 
-class BitString(ASN1SimpleSizedType):
-    simple_type = bytes
+    def _set_value(self, value):
+        self._value = bool(value)
+
+
+class BitString(ASN1SimpleType):
+    simple_type = list
+
+    def _check_type(self, value):
+        return hasattr(value, '__iter__') and all([str(c) in '01' for c in value])
+
+    def _set_value(self, value):
+        self._value = list()
+        for i in value:
+            self._value.append(int(i))
 
     @staticmethod
     def _get_bytes_size_from_bits(bits):
@@ -233,19 +246,20 @@ class BitString(ASN1SimpleSizedType):
         return bytes_size
 
 
-class OctetString(ASN1SimpleSizedType):
+class OctetString(ASN1SimpleType):
     simple_type = bytes
 
 
-class IA5String(ASN1SimpleSizedType):
+class IA5String(ASN1SimpleType):
     simple_type = str
 
 
-class NumericString(ASN1SimpleSizedType):
+# todo: only digits?
+class NumericString(ASN1SimpleType):
     simple_type = str
 
-    def _check_base_constraints(self, value):
-        return super()._check_base_constraints(value) and str(value).isdigit()
+    def _check_type(self, value):
+        return super()._check_type(value) and str(value).isdigit()
 
 
 class Sequence(ASN1ComposedType):
@@ -257,11 +271,17 @@ class Set(ASN1ComposedType):
 
 
 class Choice(ASN1ComposedType):
-    def _set_choice(self, val):
+    def __getattribute__(self, item):
+        exists = object.__getattribute__(self, 'exists')
+        if item in exists:
+            self._set_choice(item)
+
+        return object.__getattribute__(self, item)
+
+    def _set_choice(self, item):
         for choice in self.exists:
             self.exists[choice] = False
-
-        self.exists[val] = True
+        self.exists[item] = True
 
 
 class SequenceOf(ASN1ArrayOfType):
