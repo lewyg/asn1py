@@ -1,20 +1,62 @@
 from enum import Enum
 
+#############################
+#    Encoding / Decoding    #
+#############################
+
 WORD_SIZE = 8
 
 
 class BitStream:
     def __init__(self, buffer=None):
-        self.buffer = buffer
+        self.buffer = buffer or list()
         self.current_byte = 0
         self.current_bit = 0
 
+    @staticmethod
+    def __assert_bit(bit):
+        if str(bit) in "01":
+            return True
+        else:
+            raise Exception("Not bit!")
 
-class ByteStream:
-    def __init__(self, buffer=None):
-        self.buffer = buffer
-        self.current_byte = 0
+    def append(self, bit):
+        self.__assert_bit(bit)
 
+        self.buffer.append(int(bit))
+
+    def push(self, bit):
+        self.append(bit)
+
+    def pop(self, index=None):
+        self.buffer.pop(index)
+
+    def __getitem__(self, item):
+        return self.buffer[item]
+
+    def __setitem__(self, key, value):
+        self.__assert_bit(value)
+
+        self.buffer[key] = value
+
+    def __str__(self):
+        return ''.join(self.buffer)
+
+    def to_hex(self):
+        pass
+
+
+def get_min_bytes_to_store_bits(n_bits):
+    return (n_bits + WORD_SIZE + 1) // WORD_SIZE
+
+
+def get_max_bits_stored(n_bytes):
+    return n_bytes * WORD_SIZE
+
+
+#############################
+#           Types           #
+#############################
 
 class ASN1Type:
     @property
@@ -55,10 +97,24 @@ class ASN1Type:
     def __repr__(self):
         return str(self.get())
 
-    def encode(self):
+    # Encoding and decoding functions
+
+    def encode(self, encoding='acn'):
+        if encoding == 'acn':
+            return self._acn_encode()
+        else:
+            return b''
+
+    def _acn_encode(self):
         return b''
 
-    def decode(self, bytes):
+    def decode(self, bytes, encoding='acn'):
+        if encoding == 'acn':
+            return self._acn_decode(bytes)
+        else:
+            pass
+
+    def _acn_decode(self, bytes):
         pass
 
 
@@ -204,9 +260,6 @@ class Null(ASN1SimpleType):
 class Integer(ASN1SimpleType):
     simple_type = int
 
-    def encode(self):
-        return self._value.to_bytes(WORD_SIZE, 'big')
-
 
 class Real(ASN1SimpleType):
     simple_type = float
@@ -238,12 +291,6 @@ class BitString(ASN1SimpleType):
         self._value = list()
         for i in value:
             self._value.append(int(i))
-
-    @staticmethod
-    def _get_bytes_size_from_bits(bits):
-        bytes_size = (bits + WORD_SIZE + 1) // WORD_SIZE
-
-        return bytes_size
 
 
 class OctetString(ASN1SimpleType):
