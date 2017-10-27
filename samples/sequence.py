@@ -20,9 +20,12 @@ class MyStruct(Sequence):
     def __init__(self):
         self.a = MyStruct_a()
         self.b = Integer()
-        self.c = MyEnum.NONE
+        self.c = MyEnum()
 
-        self.exists = dict(
+        self.attributes = dict(
+            a=True,
             b=True,
             c=True,
         )
+
+        self.initialized = True

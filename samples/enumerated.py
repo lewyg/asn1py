@@ -7,7 +7,10 @@ from asn1 import Enumerated
 
 
 class MyEnum(Enumerated):
-    NONE = None
-    alpha = 1
-    beta = 2
-    gamma = 3
+    class Value(Enumerated.Value):
+        NONE = None
+        alpha = 1
+        beta = 2
+        gamma = 3
+
+    simple_type = Value

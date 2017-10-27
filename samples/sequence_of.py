@@ -25,10 +25,13 @@ class MySqOfElement(Sequence):
         self.b = Real()
         self.c = Integer()
 
-        self.exists = dict(
+        self.attributes = dict(
+            a=True,
             b=True,
             c=True,
         )
+
+        self.initialized = True
 
 
 class MySqOf(SequenceOf):

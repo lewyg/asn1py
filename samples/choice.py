@@ -24,8 +24,10 @@ class MyChoice(Choice):
         self.beta = Integer()
         self.octStr = MyChoice_octStr()
 
-        self.exists = dict(
+        self.attributes = dict(
             alpha=False,
             beta=False,
             octStr=False
         )
+
+        self.initialized = True
