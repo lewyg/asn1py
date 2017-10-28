@@ -8,48 +8,80 @@ from enum import Enum
 class bitarray:
     BITS_IN_BYTE = 8
 
-    def __init__(self, source=0):
+    def __init__(self, source=None):
+        self._data = bytearray()
+        self._bitsize = 0
+
         if isinstance(source, int):
-            self._data = bytearray((source + self.BITS_IN_BYTE - 1) // self.BITS_IN_BYTE)
-            self._bitsize = source
-        else:
-            self._data = bytearray(source)
-            self._bitsize = len(self._data)
+            self.__init_from_size(source)
+
+        elif self.__expandable(source):
+            self.__append_from_iterable(source)
+
+        elif isinstance(source, bytearray) or isinstance(source, bytes):
+            self.__init_from_bytes(source)
+
+    def __expandable(self, source):
+        return hasattr(source, '__iter__') and all([str(c) in "01" for c in source])
+
+    def __init_from_size(self, size):
+        self._data = bytearray((size + self.BITS_IN_BYTE - 1) // self.BITS_IN_BYTE)
+        self._bitsize = size
+
+    def __append_from_iterable(self, source):
+        for c in source:
+            self.append(int(c))
+
+    def __init_from_bytes(self, source):
+        self._data = bytearray(source)
+        self._bitsize = len(self._data) * self.BITS_IN_BYTE
 
     def __getitem__(self, item):
+        self.__check_index(item)
+
         bit_position = self.__get_bit_position(item)
         byte_position = self.__get_byte_position(item)
+
         byte = self._data[byte_position]
         byte &= (0b00000001 << bit_position)
 
         return byte >> bit_position
 
     def __setitem__(self, item, value):
+        self.__check_index(item)
+        self.__assert_bit(value)
+
         bit_position = self.__get_bit_position(item)
         byte_position = self.__get_byte_position(item)
+
         byte = self._data[byte_position]
         byte = self.__set_bit(byte, bit_position) if value else self.__clear_bit(byte, bit_position)
         self._data[byte_position] = byte
 
-    def __add__(self, *args, **kwargs):  # real signature unknown
-        """ Return self+value. """
-        pass
+    def __delitem__(self, item):  # real signature unknown
+        self.__check_index(item)
 
-    def __delitem__(self, *args, **kwargs):  # real signature unknown
-        """ Delete self[key]. """
-        pass
+        for i in range(item, self._bitsize - 1):
+            self[i] = self[i + 1]
 
-    def __eq__(self, *args, **kwargs):  # real signature unknown
-        """ Return self==value. """
-        pass
+        self[self._bitsize - 1] = 0
+        self._bitsize -= 1
 
-    def __iadd__(self, *args, **kwargs):  # real signature unknown
-        """ Implement self+=value. """
-        pass
+    def __add__(self, other):
+        if self.__expandable(other):
+            self.__append_from_iterable(other)
+        elif str(other) in "10":
+            self.append(int(other))
+        else:
+            raise AttributeError("Bit can be 0 1 only!")
 
-    def __imul__(self, *args, **kwargs):  # real signature unknown
-        """ Implement self*=value. """
-        pass
+        return self
+
+    def __eq__(self, other):
+        for i, b in enumerate(self):
+            if str(b) != str(other[i]):
+                return False
+        return True
 
     def __iter__(self, *args, **kwargs):  # real signature unknown
         self._n = 0
@@ -67,21 +99,14 @@ class bitarray:
     def __len__(self, *args, **kwargs):  # real signature unknown
         return self._bitsize
 
-    def __mul__(self, *args, **kwargs):  # real signature unknown
-        """ Return self*value.n """
-        pass
+    def __repr__(self):
+        return str([bit for bit in self])
 
-    def __ne__(self, *args, **kwargs):  # real signature unknown
-        """ Return self!=value. """
-        pass
-
-    def __repr__(self, *args, **kwargs):
+    def __str__(self):
         return ''.join([str(bit) for bit in self])
 
-    def __sizeof__(self):
-        return self._data.__sizeof__()
-
     def append(self, bit):
+        self.__assert_bit(bit)
         if self._bitsize % self.BITS_IN_BYTE:
             byte = self._data.pop()
         else:
@@ -93,78 +118,68 @@ class bitarray:
         self._bitsize += 1
         self._data.append(byte)
 
-    def clear(self, *args, **kwargs):  # real signature unknown
+    def clear(self):
         self._data = bytearray()
         self._bitsize = 0
 
-    def copy(self, *args, **kwargs):  # real signature unknown
-        """ Return a copy of B. """
-        pass
+    def bytes(self):
+        return self._data
 
-    def extend(self, *args, **kwargs):  # real signature unknown
-        """
-        Append all the items from the iterator or sequence to the end of the bytearray.
+    def copy(self):
+        return bitarray(self)
 
-          iterable_of_ints
-            The iterable of items to append.
-        """
-        pass
+    def extend(self, other):
+        if self.__expandable(other):
+            self.__append_from_iterable(other)
 
-    @classmethod  # known case
-    def fromhex(cls, *args, **kwargs):  # real signature unknown; NOTE: unreliably restored from __doc__
-        """
-        Create a bytearray object from a string of hexadecimal numbers.
+    @classmethod
+    def fromhex(cls, s):
+        return bitarray(bytearray.fromhex(s))
 
-        Spaces between two numbers are accepted.
-        Example: bytearray.fromhex('B9 01EF') -> bytearray(b'\\xb9\\x01\\xef')
-        """
-        pass
+    def hex(self):
+        return self._data.hex()
 
-    def hex(self):  # real signature unknown; restored from __doc__
-        """
-        B.hex() -> string
+    def insert(self, index, value):
+        self.__check_index(index)
+        self.__assert_bit(value)
 
-        Create a string of hexadecimal numbers from a bytearray object.
-        Example: bytearray([0xb9, 0x01, 0xef]).hex() -> 'b901ef'.
-        """
-        return ""
+        self.append(0)
+        for i in range(self._bitsize - 1, index, -1):
+            self[i] = self[i - 1]
 
-    def insert(self, *args, **kwargs):  # real signature unknown
-        """
-        Insert a single item into the bytearray before the given index.
+        self[index] = int(value)
 
-          index
-            The index where the value is to be inserted.
-          item
-            The item to be inserted.
-        """
-        pass
+    def pop(self, index=None):
+        index = index or self._bitsize - 1
+        self.__check_index(index)
 
-    def join(self, *args, **kwargs):  # real signature unknown
-        """
-        Concatenate any number of bytes/bytearray objects.
+        bit = self[index]
+        del self[index]
 
-        The bytearray whose method is called is inserted in between each pair.
+        return bit
 
-        The result is returned as a new bytearray object.
-        """
-        pass
+    def reverse(self):
+        new = self.copy()
 
-    def pop(self, *args, **kwargs):  # real signature unknown
-        """
-        Remove and return a single item from B.
+        for i, b in enumerate(self):
+            new[self._bitsize - i - 1] = b
 
-          index
-            The index from where to remove the item.
-            -1 (the default value) means remove the last item.
+        return new
 
-        If no index argument is given, will pop the last item.
-        """
-        pass
+    def __check_index(self, index):
+        if index >= self._bitsize:
+            raise AttributeError("Not existing item!")
 
-    def reverse(self, *args, **kwargs):  # real signature unknown
-        """ Reverse the order of the values in B in place. """
-        pass
+    @staticmethod
+    def __assert_bit(bit):
+        if str(bit) not in "10":
+            raise AttributeError("Bit can be 0 1 only!")
+
+    def __get_byte_position(self, position):
+        return position // self.BITS_IN_BYTE
+
+    def __get_bit_position(self, position):
+        return self.BITS_IN_BYTE - position % self.BITS_IN_BYTE - 1
 
     @staticmethod
     def __set_bit(byte, bit):
@@ -173,12 +188,6 @@ class bitarray:
     @staticmethod
     def __clear_bit(byte, bit):
         return byte & ~(1 << bit)
-
-    def __get_byte_position(self, position):
-        return position // self.BITS_IN_BYTE
-
-    def __get_bit_position(self, position):
-        return self.BITS_IN_BYTE - position % self.BITS_IN_BYTE - 1
 
 
 #############################
@@ -493,15 +502,13 @@ class Boolean(ASN1SimpleType):
 
 
 class BitString(ASN1SimpleType):
-    simple_type = list
+    simple_type = bitarray
 
     def _check_type(self, value):
-        return hasattr(value, '__iter__') and all([str(c) in '01' for c in value])
+        return hasattr(value, '__iter__') and all([str(c) in "01" for c in value])
 
     def _set_value(self, value):
-        self._value = list()
-        for i in value:
-            self._value.append(int(i))
+        self._value = bitarray(value)
 
 
 class OctetString(ASN1SimpleType):
