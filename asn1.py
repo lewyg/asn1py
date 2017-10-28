@@ -1,5 +1,186 @@
 from enum import Enum
 
+
+#############################
+#         bitarray          #
+#############################
+
+class bitarray:
+    BITS_IN_BYTE = 8
+
+    def __init__(self, source=0):
+        if isinstance(source, int):
+            self._data = bytearray((source + self.BITS_IN_BYTE - 1) // self.BITS_IN_BYTE)
+            self._bitsize = source
+        else:
+            self._data = bytearray(source)
+            self._bitsize = len(self._data)
+
+    def __getitem__(self, item):
+        bit_position = self.__get_bit_position(item)
+        byte_position = self.__get_byte_position(item)
+        byte = self._data[byte_position]
+        byte &= (0b00000001 << bit_position)
+
+        return byte >> bit_position
+
+    def __setitem__(self, item, value):
+        bit_position = self.__get_bit_position(item)
+        byte_position = self.__get_byte_position(item)
+        byte = self._data[byte_position]
+        byte = self.__set_bit(byte, bit_position) if value else self.__clear_bit(byte, bit_position)
+        self._data[byte_position] = byte
+
+    def __add__(self, *args, **kwargs):  # real signature unknown
+        """ Return self+value. """
+        pass
+
+    def __delitem__(self, *args, **kwargs):  # real signature unknown
+        """ Delete self[key]. """
+        pass
+
+    def __eq__(self, *args, **kwargs):  # real signature unknown
+        """ Return self==value. """
+        pass
+
+    def __iadd__(self, *args, **kwargs):  # real signature unknown
+        """ Implement self+=value. """
+        pass
+
+    def __imul__(self, *args, **kwargs):  # real signature unknown
+        """ Implement self*=value. """
+        pass
+
+    def __iter__(self, *args, **kwargs):  # real signature unknown
+        self._n = 0
+        return self
+
+    def __next__(self):
+        if self._n < self._bitsize:
+            element = self[self._n]
+            self._n += 1
+            return element
+
+        else:
+            raise StopIteration
+
+    def __len__(self, *args, **kwargs):  # real signature unknown
+        return self._bitsize
+
+    def __mul__(self, *args, **kwargs):  # real signature unknown
+        """ Return self*value.n """
+        pass
+
+    def __ne__(self, *args, **kwargs):  # real signature unknown
+        """ Return self!=value. """
+        pass
+
+    def __repr__(self, *args, **kwargs):
+        return ''.join([str(bit) for bit in self])
+
+    def __sizeof__(self):
+        return self._data.__sizeof__()
+
+    def append(self, bit):
+        if self._bitsize % self.BITS_IN_BYTE:
+            byte = self._data.pop()
+        else:
+            byte = 0b00000000
+
+        bit_position = self.__get_bit_position(self._bitsize)
+        byte = self.__set_bit(byte, bit_position) if bit else self.__clear_bit(byte, bit_position)
+
+        self._bitsize += 1
+        self._data.append(byte)
+
+    def clear(self, *args, **kwargs):  # real signature unknown
+        self._data = bytearray()
+        self._bitsize = 0
+
+    def copy(self, *args, **kwargs):  # real signature unknown
+        """ Return a copy of B. """
+        pass
+
+    def extend(self, *args, **kwargs):  # real signature unknown
+        """
+        Append all the items from the iterator or sequence to the end of the bytearray.
+
+          iterable_of_ints
+            The iterable of items to append.
+        """
+        pass
+
+    @classmethod  # known case
+    def fromhex(cls, *args, **kwargs):  # real signature unknown; NOTE: unreliably restored from __doc__
+        """
+        Create a bytearray object from a string of hexadecimal numbers.
+
+        Spaces between two numbers are accepted.
+        Example: bytearray.fromhex('B9 01EF') -> bytearray(b'\\xb9\\x01\\xef')
+        """
+        pass
+
+    def hex(self):  # real signature unknown; restored from __doc__
+        """
+        B.hex() -> string
+
+        Create a string of hexadecimal numbers from a bytearray object.
+        Example: bytearray([0xb9, 0x01, 0xef]).hex() -> 'b901ef'.
+        """
+        return ""
+
+    def insert(self, *args, **kwargs):  # real signature unknown
+        """
+        Insert a single item into the bytearray before the given index.
+
+          index
+            The index where the value is to be inserted.
+          item
+            The item to be inserted.
+        """
+        pass
+
+    def join(self, *args, **kwargs):  # real signature unknown
+        """
+        Concatenate any number of bytes/bytearray objects.
+
+        The bytearray whose method is called is inserted in between each pair.
+
+        The result is returned as a new bytearray object.
+        """
+        pass
+
+    def pop(self, *args, **kwargs):  # real signature unknown
+        """
+        Remove and return a single item from B.
+
+          index
+            The index from where to remove the item.
+            -1 (the default value) means remove the last item.
+
+        If no index argument is given, will pop the last item.
+        """
+        pass
+
+    def reverse(self, *args, **kwargs):  # real signature unknown
+        """ Reverse the order of the values in B in place. """
+        pass
+
+    @staticmethod
+    def __set_bit(byte, bit):
+        return byte | (1 << bit)
+
+    @staticmethod
+    def __clear_bit(byte, bit):
+        return byte & ~(1 << bit)
+
+    def __get_byte_position(self, position):
+        return position // self.BITS_IN_BYTE
+
+    def __get_bit_position(self, position):
+        return self.BITS_IN_BYTE - position % self.BITS_IN_BYTE - 1
+
+
 #############################
 #    Encoding / Decoding    #
 #############################
