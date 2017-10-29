@@ -263,59 +263,43 @@ def get_max_bits_stored(n_bytes):
 #           Types           #
 #############################
 
-def decorator(cls):
-    class Wrapper(object):
-        def __init__(self, *args):
-            self.wrapped = cls(*args)
 
-        def __getattr__(self, name):
-            print('Getting the {} of {}'.format(name, self.wrapped))
-            return getattr(self.wrapped, name)
-
-    return Wrapper
-
-
-def string_wrapper(cls):
+def string_wrapper(cls, constraint_check):
     class Wrapper:
-        __ignore__ = "class mro new init setattr getattr getattribute"
-
         def __init__(self, *args):
             self.wrapped = cls(*args)
-
-            self.__getitem__ = self.wrapped.__get
-            # self.__wrap_methods()
-            # print(vars(self))
-
-        def __getattribute__(self, item):
-            return self.proxy(item)
+            self.__wrap_methods()
 
         def append(self, item):
             self.wrapped = self.wrapped + item
+            self.constraint_check()
 
         def insert(self, index, item):
-            print(self.wrapped[:index] + item + self.wrapped[index:])
             self.wrapped = self.wrapped[:index] + item + self.wrapped[index:]
+            self.constraint_check()
 
         def remove(self, index=None):
             index = index or len(self.wrapped)
             self.wrapped = self.wrapped[:index] + self.wrapped[index + 1:]
+            self.constraint_check()
 
-        def proxy(self, name):
-            return getattr(self.wrapped, name)
+        def make_proxy(self, name):
+            def proxy(self):
+                return getattr(self.wrapped, name)
+
+            return proxy
+
+        def constraint_check(self):
+            if not constraint_check(self):
+                raise Exception("Object {} cannot be {}".format(cls.__name__, self))
 
         def __wrap_methods(self):
-            def make_proxy(name):
-
-
-                return 1
-
-            ignore = set("__%s__" % n for n in self.__ignore__.split())
+            ignore = {'__new__', '__mro__', '__class__', '__getattr__', '__init__', '__getattribute__', '__setattr__',
+                      'append', 'insert', 'remove', '__dict__'}
             for name in dir(cls):
                 if name.startswith("__"):
                     if name not in ignore:
-                        method = getattr(self.wrapped, name)
-                        proxy = self.proxy(name)
-                        setattr(self, name, property(self.proxy))
+                        setattr(Wrapper, name, property(self.make_proxy(name)))
 
     return Wrapper
 
@@ -576,11 +560,14 @@ class Boolean(ASN1SimpleType):
 class BitString(ASN1SimpleType):
     simple_type = bitarray
 
+    def init_value(self):
+        return string_wrapper(bitarray, lambda val: self._check_type(val) and self.check_constraints(val))()
+
     def _check_type(self, value):
-        return hasattr(value, '__iter__') and all([str(c) in "01" for c in value])
+        return hasattr(value, '__iter__') and all([str(c) in ['0', '1'] for c in value])
 
     def _set_value(self, value):
-        self._value = bitarray(value)
+        self._value = string_wrapper(bitarray, lambda val: self._check_type(val) and self.check_constraints(val))(value)
 
 
 class OctetString(ASN1SimpleType):

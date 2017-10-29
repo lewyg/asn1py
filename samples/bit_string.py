@@ -1,7 +1,7 @@
 """
 MyBit ::= BIT STRING(SIZE(20))
 """
-from asn1 import BitString, Sequence, NumericString
+from asn1 import BitString
 
 
 class MyBit(BitString):
@@ -9,22 +9,3 @@ class MyBit(BitString):
         result = len(value) == 3
 
         return result
-
-class A(Sequence):
-    def __init__(self):
-        self.x = MyBit()
-
-        self.attributes = {'x':True}
-
-        self.initialized = True
-
-a = A()
-
-a.x = '101'
-print(a.x[:1])
-
-x = '123'
-x[2] = '4'
-print(x[2])
-
-print(a.x, type(a.x))
