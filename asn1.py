@@ -2,8 +2,9 @@ from enum import Enum
 
 
 #############################
-#         bitarray          #
+#           Bits            #
 #############################
+
 
 class bitarray:
     BITS_IN_BYTE = 8
@@ -30,13 +31,16 @@ class bitarray:
 
     def __append_from_iterable(self, source):
         for c in source:
-            self.append(int(c))
+            self._append(int(c))
 
     def __init_from_bytes(self, source):
         self._data = bytearray(source)
         self._bitsize = len(self._data) * self.BITS_IN_BYTE
 
     def __getitem__(self, item):
+        if isinstance(item, slice):
+            return bitarray([self[i] for i in range(item.start or 0, item.stop or self._bitsize, item.step or 1)])
+
         self.__check_index(item)
 
         bit_position = self.__get_bit_position(item)
@@ -71,7 +75,7 @@ class bitarray:
         if self.__expandable(other):
             self.__append_from_iterable(other)
         elif str(other) in "10":
-            self.append(int(other))
+            self._append(int(other))
         else:
             raise AttributeError("Bit can be 0 1 only!")
 
@@ -106,6 +110,9 @@ class bitarray:
         return ''.join([str(bit) for bit in self])
 
     def append(self, bit):
+        self._append(bit)
+
+    def _append(self, bit):
         self.__assert_bit(bit)
         if self._bitsize % self.BITS_IN_BYTE:
             byte = self._data.pop()
@@ -143,7 +150,7 @@ class bitarray:
         self.__check_index(index)
         self.__assert_bit(value)
 
-        self.append(0)
+        self._append(0)
         for i in range(self._bitsize - 1, index, -1):
             self[i] = self[i - 1]
 
@@ -157,6 +164,14 @@ class bitarray:
         del self[index]
 
         return bit
+
+    def remove(self, index=None):
+        index = index or self._bitsize - 1
+        self.__check_index(index)
+
+        del self[index]
+
+        return self
 
     def reverse(self):
         new = self.copy()
@@ -247,6 +262,63 @@ def get_max_bits_stored(n_bytes):
 #############################
 #           Types           #
 #############################
+
+def decorator(cls):
+    class Wrapper(object):
+        def __init__(self, *args):
+            self.wrapped = cls(*args)
+
+        def __getattr__(self, name):
+            print('Getting the {} of {}'.format(name, self.wrapped))
+            return getattr(self.wrapped, name)
+
+    return Wrapper
+
+
+def string_wrapper(cls):
+    class Wrapper:
+        __ignore__ = "class mro new init setattr getattr getattribute"
+
+        def __init__(self, *args):
+            self.wrapped = cls(*args)
+
+            self.__getitem__ = self.wrapped.__get
+            # self.__wrap_methods()
+            # print(vars(self))
+
+        def __getattribute__(self, item):
+            return self.proxy(item)
+
+        def append(self, item):
+            self.wrapped = self.wrapped + item
+
+        def insert(self, index, item):
+            print(self.wrapped[:index] + item + self.wrapped[index:])
+            self.wrapped = self.wrapped[:index] + item + self.wrapped[index:]
+
+        def remove(self, index=None):
+            index = index or len(self.wrapped)
+            self.wrapped = self.wrapped[:index] + self.wrapped[index + 1:]
+
+        def proxy(self, name):
+            return getattr(self.wrapped, name)
+
+        def __wrap_methods(self):
+            def make_proxy(name):
+
+
+                return 1
+
+            ignore = set("__%s__" % n for n in self.__ignore__.split())
+            for name in dir(cls):
+                if name.startswith("__"):
+                    if name not in ignore:
+                        method = getattr(self.wrapped, name)
+                        proxy = self.proxy(name)
+                        setattr(self, name, property(self.proxy))
+
+    return Wrapper
+
 
 class ASN1Type:
     def get(self):
