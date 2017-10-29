@@ -264,34 +264,27 @@ def get_max_bits_stored(n_bytes):
 #############################
 
 
-def string_wrapper(cls, constraint_check):
+def string_wrapper(cls, setter):
     class Wrapper:
         def __init__(self, *args):
             self.wrapped = cls(*args)
             self.__wrap_methods()
 
         def append(self, item):
-            self.wrapped = self.wrapped + item
-            self.constraint_check()
+            setter(self.wrapped + item)
 
         def insert(self, index, item):
-            self.wrapped = self.wrapped[:index] + item + self.wrapped[index:]
-            self.constraint_check()
+            setter(self.wrapped[:index] + item + self.wrapped[index:])
 
         def remove(self, index=None):
             index = index or len(self.wrapped)
-            self.wrapped = self.wrapped[:index] + self.wrapped[index + 1:]
-            self.constraint_check()
+            setter(self.wrapped[:index] + self.wrapped[index + 1:])
 
         def make_proxy(self, name):
             def proxy(self):
                 return getattr(self.wrapped, name)
 
             return proxy
-
-        def constraint_check(self):
-            if not constraint_check(self):
-                raise Exception("Object {} cannot be {}".format(cls.__name__, self))
 
         def __wrap_methods(self):
             ignore = {'__new__', '__mro__', '__class__', '__getattr__', '__init__', '__getattribute__', '__setattr__',
@@ -561,13 +554,13 @@ class BitString(ASN1SimpleType):
     simple_type = bitarray
 
     def init_value(self):
-        return string_wrapper(bitarray, lambda val: self._check_type(val) and self.check_constraints(val))()
+        return string_wrapper(bitarray, lambda val: self.set(val))()
 
     def _check_type(self, value):
         return hasattr(value, '__iter__') and all([str(c) in ['0', '1'] for c in value])
 
     def _set_value(self, value):
-        self._value = string_wrapper(bitarray, lambda val: self._check_type(val) and self.check_constraints(val))(value)
+        self._value = string_wrapper(bitarray, lambda val: self.set(val))(value)
 
 
 class OctetString(ASN1SimpleType):
