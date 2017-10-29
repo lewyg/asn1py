@@ -288,7 +288,7 @@ def string_wrapper(cls, setter):
 
         def __wrap_methods(self):
             ignore = {'__new__', '__mro__', '__class__', '__getattr__', '__init__', '__getattribute__', '__setattr__',
-                      'append', 'insert', 'remove', '__dict__'}
+                      '__dict__'}
             for name in dir(cls):
                 if name.startswith("__"):
                     if name not in ignore:
@@ -554,13 +554,13 @@ class BitString(ASN1SimpleType):
     simple_type = bitarray
 
     def init_value(self):
-        return string_wrapper(bitarray, lambda val: self.set(val))()
+        return string_wrapper(bitarray, self.set)()
 
     def _check_type(self, value):
         return hasattr(value, '__iter__') and all([str(c) in ['0', '1'] for c in value])
 
     def _set_value(self, value):
-        self._value = string_wrapper(bitarray, lambda val: self.set(val))(value)
+        self._value = string_wrapper(bitarray, self.set)(value)
 
 
 class OctetString(ASN1SimpleType):
