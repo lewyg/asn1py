@@ -24,9 +24,9 @@ class MySqOfElement_a(Integer):
 
 class MySqOfElement(Sequence):
     def __init__(self):
-        self.a = MySqOfElement_a()
-        self.b = Real()
-        self.c = Integer()
+        self.a = MySqOfElement_a()  # type: MySqOfElement_a.__checktype__
+        self.b = Real()  # type: Real.__checktype__
+        self.c = Integer()  # type: Integer.__checktype__
 
         self.attributes = dict(
             a=True,

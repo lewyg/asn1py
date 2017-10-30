@@ -1,3 +1,4 @@
+import typing
 from enum import Enum
 
 #############################
@@ -40,7 +41,7 @@ class bitarray:
         if isinstance(item, slice):
             return bitarray([self[i] for i in range(item.start or 0, item.stop or self._bitsize, item.step or 1)])
 
-        self.__check_index(item)
+        self.__assert_correct_index(item)
 
         bit_position = self.__get_bit_position(item)
         byte_position = self.__get_byte_position(item)
@@ -51,7 +52,7 @@ class bitarray:
         return byte >> bit_position
 
     def __setitem__(self, item, value):
-        self.__check_index(item)
+        self.__assert_correct_index(item)
         self.__assert_bit(value)
 
         bit_position = self.__get_bit_position(item)
@@ -61,8 +62,8 @@ class bitarray:
         byte = self.__set_bit(byte, bit_position) if value else self.__clear_bit(byte, bit_position)
         self._data[byte_position] = byte
 
-    def __delitem__(self, item):  # real signature unknown
-        self.__check_index(item)
+    def __delitem__(self, item):
+        self.__assert_correct_index(item)
 
         for i in range(item, self._bitsize - 1):
             self[i] = self[i + 1]
@@ -86,7 +87,7 @@ class bitarray:
                 return False
         return True
 
-    def __iter__(self, *args, **kwargs):
+    def __iter__(self):
         self._n = 0
         return self
 
@@ -99,7 +100,7 @@ class bitarray:
         else:
             raise StopIteration
 
-    def __len__(self, *args, **kwargs):
+    def __len__(self):
         return self._bitsize
 
     def __repr__(self):
@@ -149,7 +150,7 @@ class bitarray:
         return self._data.hex()
 
     def insert(self, index, value):
-        self.__check_index(index)
+        self.__assert_correct_index(index)
         self.__assert_bit(value)
 
         self._append(0)
@@ -160,7 +161,7 @@ class bitarray:
 
     def pop(self, index=None):
         index = index or self._bitsize - 1
-        self.__check_index(index)
+        self.__assert_correct_index(index)
 
         bit = self[index]
         del self[index]
@@ -169,7 +170,7 @@ class bitarray:
 
     def remove(self, index=None):
         index = index or self._bitsize - 1
-        self.__check_index(index)
+        self.__assert_correct_index(index)
 
         del self[index]
 
@@ -183,8 +184,8 @@ class bitarray:
 
         return new
 
-    def __check_index(self, index):
-        if index >= self._bitsize:
+    def __assert_correct_index(self, index):
+        if 0 <= index >= self._bitsize:
             raise AttributeError("Not existing item!")
 
     @staticmethod
@@ -269,6 +270,8 @@ class BitStream:
 
 
 class ASN1Type:
+    __checktype__ = None
+
     def get(self):
         return self
 
@@ -350,7 +353,7 @@ class ASN1ComposedType(ASN1Type):
         for attr, val in vars(value).items():
             getattr(self, attr).set(val)
 
-    def __getattribute__(self, item):
+    def __getattribute__(self, item) -> int:
         initialized = object.__getattribute__(self, 'initialized')
 
         if not initialized:
@@ -399,44 +402,58 @@ class ASN1ComposedType(ASN1Type):
         return str(vars(self))
 
 
+class StringWrapper:
+    __cls__ = None
+    __setter__ = None
+
+    def __init__(self, *args):
+        self.wrapped = self.__cls__(*args)
+        self.__wrap_methods()
+
+    def append(self, item):
+        self.__setter__(self.wrapped + item)
+
+    def insert(self, index, item):
+        self.__setter__(self.wrapped[:index] + item + self.wrapped[index:])
+
+    def remove(self, index=None):
+        index = index or len(self.wrapped)
+        self.__setter__(self.wrapped[:index] + self.wrapped[index + 1:])
+
+    def replace(self, key, value):
+        self[key] = value
+
+    def __setitem__(self, key, value):
+        if key <= len(self.wrapped):
+            if hasattr(self.wrapped, '__setitem__'):
+                self.wrapped[key] = value
+            else:
+                self.__setter__(self.wrapped[:key] + value + self.wrapped[key + 1:])
+        else:
+            raise Exception("{} index out of range".format(self.__cls__.__name__))
+
+    def __getattr__(self, item):
+        return getattr(self.wrapped, item)
+
+    def __wrap_methods(self):
+        def make_proxy(attribute):
+            def proxy(obj):
+                return getattr(obj.wrapped, attribute)
+
+            return proxy
+
+        ignore = {'__new__', '__mro__', '__class__', '__init__', '__getattribute__', '__dict__', '__getattr__'}
+        for name in dir(self.__cls__):
+            if name.startswith("__") and name not in ignore:
+                setattr(self.__class__, name, property(make_proxy(name)))
+
+
 class ASN1StringWrappedType(ASN1SimpleType):
     @staticmethod
     def string_wrapper(cls, setter):
-        class Wrapper:
-            def __init__(self, *args):
-                self.wrapped = cls(*args)
-                self.__wrap_methods()
-
-            def append(self, item):
-                setter(self.wrapped + item)
-
-            def insert(self, index, item):
-                setter(self.wrapped[:index] + item + self.wrapped[index:])
-
-            def remove(self, index=None):
-                index = index or len(self.wrapped)
-                setter(self.wrapped[:index] + self.wrapped[index + 1:])
-
-            def __setitem__(self, key, value):
-                if key <= len(self.wrapped):
-                    if hasattr(self.wrapped, '__setitem__'):
-                        self.wrapped[key] = value
-                    else:
-                        setter(self.wrapped[:key] + value + self.wrapped[key + 1:])
-                else:
-                    raise Exception("{} index out of range".format(cls.__name__))
-
-            def __wrap_methods(self):
-                def make_proxy(attribute):
-                    def proxy(obj):
-                        return getattr(obj.wrapped, attribute)
-
-                    return proxy
-
-                ignore = {'__new__', '__mro__', '__class__', '__init__', '__getattribute__', '__dict__'}
-                for name in dir(cls):
-                    if name.startswith("__") and name not in ignore:
-                        setattr(self.__class__, name, property(make_proxy(name)))
+        class Wrapper(StringWrapper):
+            __cls__ = cls
+            __setter__ = setter
 
         return Wrapper
 
@@ -491,12 +508,12 @@ class ASN1ArrayOfType(ASN1Type):
 
         return self
 
-    def __next__(self):
+    def __next__(self) -> element_type.__checktype__:
         if self._n < len(self.list):
             element = self.list[self._n]
             self._n += 1
 
-            return element
+            return element.get()
 
         else:
             del self._n
@@ -515,9 +532,6 @@ class ASN1ArrayOfType(ASN1Type):
                     return False
             else:
                 return True
-
-
-EnumElement = Enum
 
 
 class Enumerated(ASN1SimpleType):
@@ -544,10 +558,12 @@ class Null(ASN1SimpleType):
 
 class Integer(ASN1SimpleType):
     simple_type = int
+    __checktype__ = simple_type
 
 
 class Real(ASN1SimpleType):
     simple_type = float
+    __checktype__ = simple_type
 
     def _check_type(self, value):
         return super()._check_type(value) or isinstance(value, int)
@@ -558,6 +574,7 @@ class Real(ASN1SimpleType):
 
 class Boolean(ASN1SimpleType):
     simple_type = bool
+    __checktype__ = simple_type
 
     def _check_type(self, value):
         return isinstance(bool(value), bool)
@@ -568,6 +585,7 @@ class Boolean(ASN1SimpleType):
 
 class BitString(ASN1StringWrappedType):
     simple_type = bitarray
+    __checktype__ = typing.Union['BitString', StringWrapper, simple_type]
 
     def _check_type(self, value):
         return hasattr(value, '__iter__') and all([is_bit(c) for c in value])
@@ -575,17 +593,20 @@ class BitString(ASN1StringWrappedType):
 
 class OctetString(ASN1StringWrappedType):
     simple_type = bytearray
+    __checktype__ = typing.Union['OctetString', StringWrapper, simple_type]
 
     def _check_type(self, value):
-        return super()._check_type(value) or isinstance(value, bytes) or isinstance(value, str)
+        return super()._check_type(value) or isinstance(value, bytes)
 
 
 class IA5String(ASN1StringWrappedType):
     simple_type = str
+    __checktype__ = typing.Union['IA5String', StringWrapper, simple_type]
 
 
 class NumericString(ASN1StringWrappedType):
     simple_type = str
+    __checktype__ = typing.Union['NumericString', StringWrapper, simple_type]
 
     def _check_type(self, value):
         return super()._check_type(value) and str(value).isdigit()

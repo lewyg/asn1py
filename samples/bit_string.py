@@ -1,6 +1,7 @@
 """
 MyBit ::= BIT STRING(SIZE(20))
 """
+
 from asn1 import BitString
 
 
