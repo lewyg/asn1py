@@ -1,5 +1,6 @@
-import typing
 from enum import Enum
+
+import typing
 
 #############################
 #           Bits            #
@@ -21,9 +22,6 @@ class bitarray:
 
         elif isinstance(source, bytearray) or isinstance(source, bytes):
             self.__init_from_bytes(source)
-
-    def __expandable(self, source):
-        return hasattr(source, '__iter__') and all([is_bit(c) for c in source])
 
     def __init_from_size(self, size):
         self._data = bytearray((size + WORD_SIZE - 1) // WORD_SIZE)
@@ -142,6 +140,10 @@ class bitarray:
         if self.__expandable(other):
             self.__append_from_iterable(other)
 
+    @staticmethod
+    def __expandable(source):
+        return hasattr(source, '__iter__') and all([is_bit(c) for c in source])
+
     @classmethod
     def fromhex(cls, s):
         return bitarray(bytearray.fromhex(s))
@@ -193,10 +195,12 @@ class bitarray:
         if not is_bit(bit):
             raise AttributeError("Bit can be 0 1 only!")
 
-    def __get_byte_position(self, position):
+    @staticmethod
+    def __get_byte_position(position):
         return position // WORD_SIZE
 
-    def __get_bit_position(self, position):
+    @staticmethod
+    def __get_bit_position(position):
         return WORD_SIZE - position % WORD_SIZE - 1
 
     @staticmethod
@@ -212,12 +216,12 @@ def is_bit(c):
     return str(c) in ['0', '1']
 
 
-def get_min_bytes_to_store_bits(bits):
-    return (bits + WORD_SIZE + 1) // WORD_SIZE
+def get_min_bytes_to_store_bits(n_bits):
+    return (n_bits + WORD_SIZE + 1) // WORD_SIZE
 
 
-def get_max_bits_stored(bytes):
-    return bytes * WORD_SIZE
+def get_max_bits_stored(n_bytes):
+    return n_bytes * WORD_SIZE
 
 
 #############################
@@ -313,21 +317,21 @@ class ASN1Type:
     def _acn_encode(self):
         return b''
 
-    def decode(self, bytes, encoding='acn'):
+    def decode(self, source, encoding='acn'):
         if encoding == 'acn':
-            return self._acn_decode(bytes)
+            return self._acn_decode(source)
         else:
             pass
 
-    def _acn_decode(self, bytes):
+    def _acn_decode(self, source):
         pass
 
 
 class ASN1SimpleType(ASN1Type):
     simple_type = object
 
-    def __init__(self):
-        self.set(self.init_value())
+    def __init__(self, source=None):
+        self.set(source or self.init_value())
 
     def init_value(self):
         return self.simple_type()
@@ -353,7 +357,7 @@ class ASN1ComposedType(ASN1Type):
         for attr, val in vars(value).items():
             getattr(self, attr).set(val)
 
-    def __getattribute__(self, item) -> int:
+    def __getattribute__(self, item):
         initialized = object.__getattribute__(self, 'initialized')
 
         if not initialized:
@@ -466,7 +470,7 @@ class ASN1ArrayOfType(ASN1Type):
     element_type = ASN1Type
 
     def __init__(self):
-        self.list = list()
+        self.list: typing.List[self.element_type] = list()
         self._init_list()
 
     def _init_list(self):
@@ -508,7 +512,7 @@ class ASN1ArrayOfType(ASN1Type):
 
         return self
 
-    def __next__(self) -> element_type.__checktype__:
+    def __next__(self):
         if self._n < len(self.list):
             element = self.list[self._n]
             self._n += 1
@@ -535,7 +539,9 @@ class ASN1ArrayOfType(ASN1Type):
 
 
 class Enumerated(ASN1SimpleType):
+
     Value = Enum
+    __checktype__ = 'Value'
 
     # class Value(Value):
     #     NONE = None

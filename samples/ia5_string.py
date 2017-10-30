@@ -10,6 +10,6 @@ class MyString(IA5String):
 
     def check_constraints(self, value):
         result = 1 <= len(value) <= 10
-        result = result and all(c in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcd" for c in value)
+        result = result and all(c in 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcd' for c in value)
 
         return result
