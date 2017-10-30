@@ -417,10 +417,20 @@ class ASN1StringWrappedType(ASN1SimpleType):
                 index = index or len(self.wrapped)
                 setter(self.wrapped[:index] + self.wrapped[index + 1:])
 
+            def __setitem__(self, key, value):
+                if key <= len(self.wrapped):
+                    if hasattr(self.wrapped, '__setitem__'):
+                        self.wrapped[key] = value
+                    else:
+                        setter(self.wrapped[:key] + value + self.wrapped[key + 1:])
+                else:
+                    raise Exception("{} index out of range".format(cls.__name__))
+
             def __wrap_methods(self):
                 def make_proxy(attribute):
                     def proxy(obj):
                         return getattr(obj.wrapped, attribute)
+
                     return proxy
 
                 ignore = {'__new__', '__mro__', '__class__', '__init__', '__getattribute__', '__dict__'}
