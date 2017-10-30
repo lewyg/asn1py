@@ -10,7 +10,8 @@ from samples.sequence import MyStruct
 
 
 class MyChoice_octStr(OctetString):
-    max_size = 4
+    def init_value(self):
+        return b'\x00\x00\x00\x00'
 
     def check_constraints(self, value):
         result = len(value) == 4

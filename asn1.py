@@ -566,6 +566,9 @@ class BitString(ASN1StringWrappedType):
 class OctetString(ASN1StringWrappedType):
     simple_type = bytearray
 
+    def _check_type(self, value):
+        return super()._check_type(value) or isinstance(value, bytes) or isinstance(value, str)
+
 
 class IA5String(ASN1StringWrappedType):
     simple_type = str

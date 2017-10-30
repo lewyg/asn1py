@@ -13,6 +13,9 @@ from asn1 import SequenceOf, Real, Integer, Sequence
 
 
 class MySqOfElement_a(Integer):
+    def init_value(self):
+        return 1
+
     def check_constraints(self, value):
         result = 1 <= value <= 10
 

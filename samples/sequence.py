@@ -10,6 +10,9 @@ from samples.enumerated import MyEnum
 
 
 class MyStruct_a(Integer):
+    def init_value(self):
+        return 1
+
     def check_constraints(self, value):
         result = 1 <= value <= 10
 
