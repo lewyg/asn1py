@@ -21,9 +21,9 @@ class MyChoice_octStr(OctetString):
 
 class MyChoice(Choice):
     def __init__(self):
-        self.alpha: MyStruct.__checktype__ = MyStruct()
-        self.beta: Integer.__checktype__ = Integer()
-        self.octStr: MyChoice_octStr.__checktype__ = MyChoice_octStr()
+        self.alpha: MyStruct._checktype_ = MyStruct()
+        self.beta: Integer._checktype_ = Integer()
+        self.octStr: MyChoice_octStr._checktype_ = MyChoice_octStr()
 
         self.attributes = dict(
             alpha=False,

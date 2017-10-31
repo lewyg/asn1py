@@ -21,9 +21,9 @@ class MyStruct_a(Integer):
 
 class MyStruct(Sequence):
     def __init__(self):
-        self.a: MyStruct_a.__checktype__ = MyStruct_a()
-        self.b: Integer.__checktype__ = Integer()
-        self.c: MyEnum.__checktype__ = MyEnum()
+        self.a: MyStruct_a._checktype_ = MyStruct_a()
+        self.b: Integer._checktype_ = Integer()
+        self.c: MyEnum._checktype_ = MyEnum()
 
         self.attributes = dict(
             a=True,

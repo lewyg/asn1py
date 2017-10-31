@@ -274,7 +274,7 @@ class BitStream:
 
 
 class ASN1Type:
-    __checktype__ = None
+    _checktype_ = None
 
     def get(self):
         return self
@@ -328,19 +328,19 @@ class ASN1Type:
 
 
 class ASN1SimpleType(ASN1Type):
-    simple_type = object
+    _simpletype_ = object
 
     def __init__(self, source=None):
         self.set(source or self.init_value())
 
     def init_value(self):
-        return self.simple_type()
+        return self._simpletype_()
 
     def get(self):
         return self._value
 
     def _check_type(self, value):
-        return isinstance(value, self.simple_type)
+        return isinstance(value, self._simpletype_)
 
     def _set_value(self, value):
         self._value = value
@@ -407,22 +407,22 @@ class ASN1ComposedType(ASN1Type):
 
 
 class StringWrapper:
-    __cls__ = None
-    __setter__ = None
+    _cls_ = None
+    _setter_ = None
 
     def __init__(self, *args):
-        self.wrapped = self.__cls__(*args)
+        self.wrapped = self._cls_(*args)
         self.__wrap_methods()
 
     def append(self, item):
-        self.__setter__(self.wrapped + item)
+        self._setter_(self.wrapped + item)
 
     def insert(self, index, item):
-        self.__setter__(self.wrapped[:index] + item + self.wrapped[index:])
+        self._setter_(self.wrapped[:index] + item + self.wrapped[index:])
 
     def remove(self, index=None):
         index = index or len(self.wrapped)
-        self.__setter__(self.wrapped[:index] + self.wrapped[index + 1:])
+        self._setter_(self.wrapped[:index] + self.wrapped[index + 1:])
 
     def replace(self, key, value):
         self[key] = value
@@ -432,9 +432,9 @@ class StringWrapper:
             if hasattr(self.wrapped, '__setitem__'):
                 self.wrapped[key] = value
             else:
-                self.__setter__(self.wrapped[:key] + value + self.wrapped[key + 1:])
+                self._setter_(self.wrapped[:key] + value + self.wrapped[key + 1:])
         else:
-            raise Exception("{} index out of range".format(self.__cls__.__name__))
+            raise Exception("{} index out of range".format(self._cls_.__name__))
 
     def __getattr__(self, item):
         return getattr(self.wrapped, item)
@@ -447,35 +447,35 @@ class StringWrapper:
             return proxy
 
         ignore = {'__new__', '__mro__', '__class__', '__init__', '__getattribute__', '__dict__', '__getattr__'}
-        for name in dir(self.__cls__):
+        for name in dir(self._cls_):
             if name.startswith("__") and name not in ignore:
                 setattr(self.__class__, name, property(make_proxy(name)))
 
 
 class ASN1StringWrappedType(ASN1SimpleType):
     @staticmethod
-    def string_wrapper(cls, setter):
+    def _string_wrapper(cls, setter):
         class Wrapper(StringWrapper):
-            __cls__ = cls
-            __setter__ = setter
+            _cls_ = cls
+            _setter_ = setter
 
         return Wrapper
 
     def _set_value(self, value):
-        self._value = self.string_wrapper(self.simple_type, self.set)(value)
+        self._value = self._string_wrapper(self._simpletype_, self.set)(value)
 
 
 class ASN1ArrayOfType(ASN1Type):
-    max_size = 0
-    element_type = ASN1Type
+    _maxsize_ = 0
+    _elemtype_ = ASN1Type
 
     def __init__(self):
-        self.list: typing.List[self.element_type] = list()
+        self.list: typing.List[self._elemtype_] = list()
         self._init_list()
 
     def _init_list(self):
-        for i in range(self.max_size):
-            self.list.append(self.element_type())
+        for i in range(self._maxsize_):
+            self.list.append(self._elemtype_())
 
     def get(self):
         return self.list
@@ -539,14 +539,12 @@ class ASN1ArrayOfType(ASN1Type):
 
 
 class Enumerated(ASN1SimpleType):
-
     Value = Enum
-    __checktype__ = 'Value'
 
-    # class Value(Value):
+    # class Value(Enumerated.Value):
     #     NONE = None
 
-    simple_type = Value
+    _simpletype_ = Value
 
     def init_value(self):
         return self.Value.NONE
@@ -563,13 +561,13 @@ class Null(ASN1SimpleType):
 
 
 class Integer(ASN1SimpleType):
-    simple_type = int
-    __checktype__ = simple_type
+    _simpletype_ = int
+    _checktype_ = _simpletype_
 
 
 class Real(ASN1SimpleType):
-    simple_type = float
-    __checktype__ = simple_type
+    _simpletype_ = float
+    _checktype_ = _simpletype_
 
     def _check_type(self, value):
         return super()._check_type(value) or isinstance(value, int)
@@ -579,8 +577,8 @@ class Real(ASN1SimpleType):
 
 
 class Boolean(ASN1SimpleType):
-    simple_type = bool
-    __checktype__ = simple_type
+    _simpletype_ = bool
+    _checktype_ = _simpletype_
 
     def _check_type(self, value):
         return isinstance(bool(value), bool)
@@ -590,29 +588,29 @@ class Boolean(ASN1SimpleType):
 
 
 class BitString(ASN1StringWrappedType):
-    simple_type = bitarray
-    __checktype__ = typing.Union['BitString', StringWrapper, simple_type]
+    _simpletype_ = bitarray
+    _checktype_ = typing.Union['BitString', StringWrapper, _simpletype_]
 
     def _check_type(self, value):
         return hasattr(value, '__iter__') and all([is_bit(c) for c in value])
 
 
 class OctetString(ASN1StringWrappedType):
-    simple_type = bytearray
-    __checktype__ = typing.Union['OctetString', StringWrapper, simple_type]
+    _simpletype_ = bytearray
+    _checktype_ = typing.Union['OctetString', StringWrapper, _simpletype_]
 
     def _check_type(self, value):
         return super()._check_type(value) or isinstance(value, bytes)
 
 
 class IA5String(ASN1StringWrappedType):
-    simple_type = str
-    __checktype__ = typing.Union['IA5String', StringWrapper, simple_type]
+    _simpletype_ = str
+    _checktype_ = typing.Union['IA5String', StringWrapper, _simpletype_]
 
 
 class NumericString(ASN1StringWrappedType):
-    simple_type = str
-    __checktype__ = typing.Union['NumericString', StringWrapper, simple_type]
+    _simpletype_ = str
+    _checktype_ = typing.Union['NumericString', StringWrapper, _simpletype_]
 
     def _check_type(self, value):
         return super()._check_type(value) and str(value).isdigit()
