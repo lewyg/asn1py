@@ -5,6 +5,8 @@ from asn1 import OctetString
 
 
 class MyOct(OctetString):
+    constraints = 'SIZE(4)'
+
     def init_value(self):
         return b'\x00\x00\x00\x00'
 

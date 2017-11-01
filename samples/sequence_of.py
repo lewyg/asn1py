@@ -13,6 +13,8 @@ from asn1 import SequenceOf, Real, Integer, Sequence
 
 
 class MySqOfElement_a(Integer):
+    constraints = '1..10'
+
     def init_value(self):
         return 1
 
@@ -24,9 +26,9 @@ class MySqOfElement_a(Integer):
 
 class MySqOfElement(Sequence):
     def __init__(self):
-        self.a: MySqOfElement_a._checktype_ = MySqOfElement_a()
-        self.b: Real._checktype_ = Real()
-        self.c: Integer._checktype_ = Integer()
+        self.a: MySqOfElement_a.__typing__ = MySqOfElement_a()
+        self.b: Real.__typing__ = Real()
+        self.c: Integer.__typing__ = Integer()
 
         self.attributes = dict(
             a=True,
@@ -38,8 +40,10 @@ class MySqOfElement(Sequence):
 
 
 class MySqOf(SequenceOf):
-    _maxsize_ = 25
-    _elemtype_ = MySqOfElement
+    __size__ = 25
+    __element__ = MySqOfElement
+
+    constraints = 'SIZE(1..20|25)'
 
     def check_constraints(self, value):
         result = 1 <= len(value) <= 20

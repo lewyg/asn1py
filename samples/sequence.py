@@ -10,6 +10,8 @@ from samples.enumerated import MyEnum
 
 
 class MyStruct_a(Integer):
+    constraints = '1..10'
+
     def init_value(self):
         return 1
 
@@ -21,9 +23,9 @@ class MyStruct_a(Integer):
 
 class MyStruct(Sequence):
     def __init__(self):
-        self.a: MyStruct_a._checktype_ = MyStruct_a()
-        self.b: Integer._checktype_ = Integer()
-        self.c: MyEnum._checktype_ = MyEnum()
+        self.a: MyStruct_a.__typing__ = MyStruct_a()
+        self.b: Integer.__typing__ = Integer()
+        self.c: MyEnum.__typing__ = MyEnum()
 
         self.attributes = dict(
             a=True,

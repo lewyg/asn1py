@@ -5,6 +5,8 @@ from asn1 import NumericString
 
 
 class MyNumString(NumericString):
+    constraints = 'SIZE(3)'
+
     def init_value(self):
         return '000'
 

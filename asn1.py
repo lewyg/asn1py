@@ -1,6 +1,20 @@
+# import typing
 from enum import Enum
 
-import typing
+
+#############################
+#        Exceptions         #
+#############################
+
+class ASN1Erorr(Exception):
+    pass
+
+
+class ConstraintException(ASN1Erorr):
+    def __init__(self, class_name, constraints, value):
+        message = "Constraint failed! {} object can't be {} ( {} )".format(class_name, value, constraints)
+        super().__init__(message)
+
 
 #############################
 #           Bits            #
@@ -15,25 +29,24 @@ class bitarray:
         self._bitsize = 0
 
         if isinstance(source, int):
-            self.__init_from_size(source)
+            self._init_from_size(source)
 
-        elif self.__expandable(source):
-            self.__append_from_iterable(source)
+        elif self.__iterable_bits(source):
+            self._init_from_iterable(source)
 
         elif isinstance(source, bytearray) or isinstance(source, bytes):
-            self.__init_from_bytes(source)
+            self._init_from_bytes(source)
 
-    def __init_from_size(self, size):
-        self._data = bytearray((size + WORD_SIZE - 1) // WORD_SIZE)
+    def _init_from_size(self, size):
+        self._data = bytearray(get_byte_size_from_bit_size(size))
         self._bitsize = size
 
-    def __append_from_iterable(self, source):
-        for c in source:
-            self._append(int(c))
+    def _init_from_iterable(self, source):
+        self.__append_bits(source)
 
-    def __init_from_bytes(self, source):
+    def _init_from_bytes(self, source):
         self._data = bytearray(source)
-        self._bitsize = len(self._data) * WORD_SIZE
+        self._bitsize = get_bit_size_from_byte_size(len(self._data))
 
     def __getitem__(self, item):
         if isinstance(item, slice):
@@ -45,9 +58,10 @@ class bitarray:
         byte_position = self.__get_byte_position(item)
 
         byte = self._data[byte_position]
-        byte &= (0b00000001 << bit_position)
+        byte >>= bit_position
+        bit = byte & 0b00000001
 
-        return byte >> bit_position
+        return bit
 
     def __setitem__(self, item, value):
         self.__assert_correct_index(item)
@@ -70,12 +84,14 @@ class bitarray:
         self._bitsize -= 1
 
     def __add__(self, other):
-        if self.__expandable(other):
-            self.__append_from_iterable(other)
+        if self.__iterable_bits(other):
+            self.__append_bits(other)
+
         elif is_bit(other):
-            self._append(int(other))
+            self.append(int(other))
+
         else:
-            raise AttributeError("Bit can be 0 1 only!")
+            raise TypeError("Can't add '{}' to bitarray implicitly".format(other))
 
         return self
 
@@ -83,6 +99,7 @@ class bitarray:
         for i, b in enumerate(self):
             if str(b) != str(other[i]):
                 return False
+
         return True
 
     def __iter__(self):
@@ -111,10 +128,8 @@ class bitarray:
         raise AttributeError("'bitarray' object has no attribute '{}'".format(item))
 
     def append(self, bit):
-        self._append(bit)
-
-    def _append(self, bit):
         self.__assert_bit(bit)
+
         if self._bitsize % WORD_SIZE:
             byte = self._data.pop()
         else:
@@ -126,36 +141,12 @@ class bitarray:
         self._bitsize += 1
         self._data.append(byte)
 
-    def clear(self):
-        self._data = bytearray()
-        self._bitsize = 0
-
-    def bytes(self):
-        return self._data
-
-    def copy(self):
-        return bitarray(self)
-
-    def extend(self, other):
-        if self.__expandable(other):
-            self.__append_from_iterable(other)
-
-    @staticmethod
-    def __expandable(source):
-        return hasattr(source, '__iter__') and all([is_bit(c) for c in source])
-
-    @classmethod
-    def fromhex(cls, s):
-        return bitarray(bytearray.fromhex(s))
-
-    def hex(self):
-        return self._data.hex()
-
     def insert(self, index, value):
         self.__assert_correct_index(index)
         self.__assert_bit(value)
 
-        self._append(0)
+        self.append(0)
+
         for i in range(self._bitsize - 1, index, -1):
             self[i] = self[i - 1]
 
@@ -186,14 +177,43 @@ class bitarray:
 
         return new
 
-    def __assert_correct_index(self, index):
-        if 0 <= index >= self._bitsize:
-            raise AttributeError("Not existing item!")
+    def clear(self):
+        self._data = bytearray()
+        self._bitsize = 0
+
+    def bytes(self):
+        return self._data
+
+    def copy(self):
+        return bitarray(self)
+
+    def extend(self, other):
+        if self.__iterable_bits(other):
+            self.__append_bits(other)
+
+    @classmethod
+    def fromhex(cls, s):
+        return bitarray(bytearray.fromhex(s))
+
+    def hex(self):
+        return self._data.hex()
+
+    def __append_bits(self, bit_iterable):
+        for c in bit_iterable:
+            self.append(int(c))
 
     @staticmethod
-    def __assert_bit(bit):
-        if not is_bit(bit):
-            raise AttributeError("Bit can be 0 1 only!")
+    def __iterable_bits(source):
+        return hasattr(source, '__iter__') and all([is_bit(c) for c in source])
+
+    def __assert_correct_index(self, item):
+        if 0 <= item >= self._bitsize:
+            raise AttributeError("Item {} doesn't exist!".format(item))
+
+    @staticmethod
+    def __assert_bit(value):
+        if not is_bit(value):
+            raise AttributeError("bitarray can't contain {} value".format(value))
 
     @staticmethod
     def __get_byte_position(position):
@@ -216,12 +236,12 @@ def is_bit(c):
     return str(c) in ['0', '1']
 
 
-def get_min_bytes_to_store_bits(n_bits):
-    return (n_bits + WORD_SIZE + 1) // WORD_SIZE
+def get_byte_size_from_bit_size(bit_size):
+    return (bit_size + WORD_SIZE + 1) // WORD_SIZE
 
 
-def get_max_bits_stored(n_bytes):
-    return n_bytes * WORD_SIZE
+def get_bit_size_from_byte_size(byte_size):
+    return byte_size * WORD_SIZE
 
 
 #############################
@@ -274,7 +294,9 @@ class BitStream:
 
 
 class ASN1Type:
-    _checktype_ = None
+    __typing__ = None
+
+    constraints = ''
 
     def get(self):
         return self
@@ -285,8 +307,9 @@ class ASN1Type:
 
         if self._check_type(value) and self.check_constraints(value):
             self._set_value(value)
+
         else:
-            raise Exception("Constraint failed! {} object cannot be {}".format(type(self).__name__, value))
+            raise ConstraintException(self.__class__.__name__, self.constraints, value)
 
     def check_constraints(self, value):
         return True
@@ -300,6 +323,7 @@ class ASN1Type:
     def __eq__(self, other):
         if isinstance(other, ASN1Type):
             return self.get() == other.get()
+
         else:
             return self.get() == other
 
@@ -328,19 +352,19 @@ class ASN1Type:
 
 
 class ASN1SimpleType(ASN1Type):
-    _simpletype_ = object
+    __base__ = object
 
     def __init__(self, source=None):
         self.set(source or self.init_value())
 
     def init_value(self):
-        return self._simpletype_()
+        return self.__base__()
 
     def get(self):
         return self._value
 
     def _check_type(self, value):
-        return isinstance(value, self._simpletype_)
+        return isinstance(value, self.__base__)
 
     def _set_value(self, value):
         self._value = value
@@ -364,16 +388,19 @@ class ASN1ComposedType(ASN1Type):
             return object.__getattribute__(self, item)
 
         attributes = object.__getattribute__(self, 'attributes')
+
         if item in attributes:
             if attributes[item]:
                 return object.__getattribute__(self, item).get()
+
             else:
-                raise Exception("Attribute {} not present!")
+                raise AttributeError("Attribute {} not present!")
+
         else:
             return object.__getattribute__(self, item)
 
     def __getattr__(self, item):
-        raise Exception("Attribute {} not exists!".format(item))
+        raise AttributeError("Attribute {} not exists!".format(item))
 
     def __setattr__(self, key, value):
         if not self.initialized:
@@ -395,34 +422,35 @@ class ASN1ComposedType(ASN1Type):
     def __eq__(self, other):
         if not isinstance(other, type(self)):
             return False
+
         else:
             for attr in other.attributes:
                 if other.attributes[attr] != self.attributes[attr] or getattr(other, attr) != getattr(self, attr):
                     return False
-            else:
-                return True
+
+            return True
 
     def __repr__(self):
         return str(vars(self))
 
 
 class StringWrapper:
-    _cls_ = None
-    _setter_ = None
+    __wrapped__ = None
+    __setter__ = None
 
     def __init__(self, *args):
-        self.wrapped = self._cls_(*args)
+        self.wrapped = self.__wrapped__(*args)
         self.__wrap_methods()
 
     def append(self, item):
-        self._setter_(self.wrapped + item)
+        self.__setter__(self.wrapped + item)
 
     def insert(self, index, item):
-        self._setter_(self.wrapped[:index] + item + self.wrapped[index:])
+        self.__setter__(self.wrapped[:index] + item + self.wrapped[index:])
 
     def remove(self, index=None):
         index = index or len(self.wrapped)
-        self._setter_(self.wrapped[:index] + self.wrapped[index + 1:])
+        self.__setter__(self.wrapped[:index] + self.wrapped[index + 1:])
 
     def replace(self, key, value):
         self[key] = value
@@ -431,10 +459,11 @@ class StringWrapper:
         if key <= len(self.wrapped):
             if hasattr(self.wrapped, '__setitem__'):
                 self.wrapped[key] = value
+
             else:
-                self._setter_(self.wrapped[:key] + value + self.wrapped[key + 1:])
+                self.__setter__(self.wrapped[:key] + value + self.wrapped[key + 1:])
         else:
-            raise Exception("{} index out of range".format(self._cls_.__name__))
+            raise AttributeError("Item {} doesn't exist!".format(key))
 
     def __getattr__(self, item):
         return getattr(self.wrapped, item)
@@ -447,7 +476,7 @@ class StringWrapper:
             return proxy
 
         ignore = {'__new__', '__mro__', '__class__', '__init__', '__getattribute__', '__dict__', '__getattr__'}
-        for name in dir(self._cls_):
+        for name in dir(self.__wrapped__):
             if name.startswith("__") and name not in ignore:
                 setattr(self.__class__, name, property(make_proxy(name)))
 
@@ -456,56 +485,56 @@ class ASN1StringWrappedType(ASN1SimpleType):
     @staticmethod
     def _string_wrapper(cls, setter):
         class Wrapper(StringWrapper):
-            _cls_ = cls
-            _setter_ = setter
+            __wrapped__ = cls
+            __setter__ = setter
 
         return Wrapper
 
     def _set_value(self, value):
-        self._value = self._string_wrapper(self._simpletype_, self.set)(value)
+        self._value = self._string_wrapper(self.__base__, self.set)(value)
 
 
 class ASN1ArrayOfType(ASN1Type):
-    _maxsize_ = 0
-    _elemtype_ = ASN1Type
+    __size__ = 0
+    __element__ = ASN1Type
 
     def __init__(self):
-        self.list: typing.List[self._elemtype_] = list()
+        self._list: typing.List[self.__element__] = list()
         self._init_list()
 
     def _init_list(self):
-        for i in range(self._maxsize_):
-            self.list.append(self._elemtype_())
+        for i in range(self.__size__):
+            self._list.append(self.__element__())
 
     def get(self):
-        return self.list
+        return self._list
 
     def _check_type(self, value):
         return isinstance(value, list)
 
     def _set_value(self, value):
         for i, elem in enumerate(value):
-            self.list[i].set(elem)
+            self._list[i].set(elem)
 
     def __getitem__(self, item):
         if self._check_index(item):
-            return self.list[item].get()
+            return self._list[item].get()
 
         else:
-            raise Exception("Max size of {} is {}".format(type(self).__name__, len(self)))
+            raise AttributeError("Item {} doesn't exist!".format(item))
 
     def __setitem__(self, key, value):
         if self._check_index(key):
-            self.list[key].set(value)
+            self._list[key].set(value)
 
         else:
-            raise Exception("Max size of {} is {}".format(type(self).__name__, len(self)))
+            raise AttributeError("Item {} doesn't exist!".format(key))
 
     def _check_index(self, index):
-        return isinstance(index, int) and len(self.list) > index
+        return isinstance(index, int) and 0 <= index < len(self._list)
 
     def __len__(self):
-        return len(self.list)
+        return len(self._list)
 
     def __iter__(self):
         self._n = 0
@@ -513,14 +542,13 @@ class ASN1ArrayOfType(ASN1Type):
         return self
 
     def __next__(self):
-        if self._n < len(self.list):
-            element = self.list[self._n]
+        if self._n < len(self._list):
+            element = self._list[self._n]
             self._n += 1
 
             return element.get()
 
         else:
-            del self._n
             raise StopIteration
 
     def __eq__(self, other):
@@ -532,10 +560,10 @@ class ASN1ArrayOfType(ASN1Type):
 
         else:
             for i, elem in enumerate(other):
-                if elem != self.list[i]:
+                if elem != self._list[i]:
                     return False
-            else:
-                return True
+
+            return True
 
 
 class Enumerated(ASN1SimpleType):
@@ -544,7 +572,7 @@ class Enumerated(ASN1SimpleType):
     # class Value(Enumerated.Value):
     #     NONE = None
 
-    _simpletype_ = Value
+    __base__ = Value
 
     def init_value(self):
         return self.Value.NONE
@@ -557,17 +585,17 @@ class Null(ASN1SimpleType):
         self._value = None
 
     def set(self, value):
-        raise Exception("Constraint failed! {} object cannot be changed".format(type(self).__name__))
+        raise ConstraintException(self.__class__.__name__, value, "Null can't be set")
 
 
 class Integer(ASN1SimpleType):
-    _simpletype_ = int
-    _checktype_ = _simpletype_
+    __base__ = int
+    __typing__ = __base__
 
 
 class Real(ASN1SimpleType):
-    _simpletype_ = float
-    _checktype_ = _simpletype_
+    __base__ = float
+    __typing__ = __base__
 
     def _check_type(self, value):
         return super()._check_type(value) or isinstance(value, int)
@@ -577,8 +605,8 @@ class Real(ASN1SimpleType):
 
 
 class Boolean(ASN1SimpleType):
-    _simpletype_ = bool
-    _checktype_ = _simpletype_
+    __base__ = bool
+    __typing__ = __base__
 
     def _check_type(self, value):
         return isinstance(bool(value), bool)
@@ -588,29 +616,29 @@ class Boolean(ASN1SimpleType):
 
 
 class BitString(ASN1StringWrappedType):
-    _simpletype_ = bitarray
-    _checktype_ = typing.Union['BitString', StringWrapper, _simpletype_]
+    __base__ = bitarray
+    __typing__ = typing.Union['BitString', StringWrapper, __base__]
 
     def _check_type(self, value):
         return hasattr(value, '__iter__') and all([is_bit(c) for c in value])
 
 
 class OctetString(ASN1StringWrappedType):
-    _simpletype_ = bytearray
-    _checktype_ = typing.Union['OctetString', StringWrapper, _simpletype_]
+    __base__ = bytearray
+    __typing__ = typing.Union['OctetString', StringWrapper, __base__]
 
     def _check_type(self, value):
         return super()._check_type(value) or isinstance(value, bytes)
 
 
 class IA5String(ASN1StringWrappedType):
-    _simpletype_ = str
-    _checktype_ = typing.Union['IA5String', StringWrapper, _simpletype_]
+    __base__ = str
+    __typing__ = typing.Union['IA5String', StringWrapper, __base__]
 
 
 class NumericString(ASN1StringWrappedType):
-    _simpletype_ = str
-    _checktype_ = typing.Union['NumericString', StringWrapper, _simpletype_]
+    __base__ = str
+    __typing__ = typing.Union['NumericString', StringWrapper, __base__]
 
     def _check_type(self, value):
         return super()._check_type(value) and str(value).isdigit()

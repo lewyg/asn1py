@@ -5,6 +5,8 @@ from asn1 import BitString
 
 
 class MyBit(BitString):
+    constraints = 'SIZE(20)'
+
     def init_value(self):
         return '000'
 

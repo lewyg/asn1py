@@ -10,6 +10,8 @@ from samples.sequence import MyStruct
 
 
 class MyChoice_octStr(OctetString):
+    constraints = 'SIZE(4)'
+
     def init_value(self):
         return b'\x00\x00\x00\x00'
 
@@ -21,9 +23,9 @@ class MyChoice_octStr(OctetString):
 
 class MyChoice(Choice):
     def __init__(self):
-        self.alpha: MyStruct._checktype_ = MyStruct()
-        self.beta: Integer._checktype_ = Integer()
-        self.octStr: MyChoice_octStr._checktype_ = MyChoice_octStr()
+        self.alpha: MyStruct.__typing__ = MyStruct()
+        self.beta: Integer.__typing__ = Integer()
+        self.octStr: MyChoice_octStr.__typing__ = MyChoice_octStr()
 
         self.attributes = dict(
             alpha=False,

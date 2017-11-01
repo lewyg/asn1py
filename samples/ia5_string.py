@@ -5,6 +5,8 @@ from asn1 import IA5String
 
 
 class MyString(IA5String):
+    constraints = 'SIZE(1..10))(FROM("A".."Z"|"abcde")'
+
     def init_value(self):
         return 'A'
 

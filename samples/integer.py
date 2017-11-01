@@ -5,6 +5,8 @@ from asn1 import Integer
 
 
 class MyInt(Integer):
+    constraints = '1|2|3'
+
     def init_value(self):
         return 1
 

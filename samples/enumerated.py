@@ -13,4 +13,4 @@ class MyEnum(Enumerated):
         beta = 2
         gamma = 3
 
-    _simpletype_ = Value
+    __base__ = Value
