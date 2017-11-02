@@ -1,5 +1,6 @@
-import typing
 from enum import Enum
+
+import typing
 
 
 #############################
@@ -28,7 +29,7 @@ class bitarray:
         self._data = bytearray()
         self._bitsize = 0
 
-        if isinstance(source, int):
+        if isinstance(source, int) and source > 0:
             self._init_from_size(source)
 
         elif self.__iterable_bits(source):
@@ -50,7 +51,7 @@ class bitarray:
 
     def __getitem__(self, item):
         if isinstance(item, slice):
-            return bitarray([self[i] for i in range(item.start or 0, item.stop or self._bitsize, item.step or 1)])
+            return self.__get_slice(item)
 
         self.__assert_correct_index(item)
 
@@ -62,6 +63,23 @@ class bitarray:
         bit = byte & 0b00000001
 
         return bit
+
+    def __get_slice(self, item):
+        start = item.start or 0
+        if start < 0:
+            start = self._bitsize + start
+
+        elif start >= self._bitsize:
+            start = self._bitsize - 1
+
+        stop = item.stop or self._bitsize
+        if stop < 0:
+            stop = self._bitsize + stop
+
+        elif stop >= self._bitsize:
+            stop = self._bitsize
+
+        return bitarray([self[i] for i in range(start, stop, item.step or 1)])
 
     def __setitem__(self, item, value):
         self.__assert_correct_index(item)
@@ -140,6 +158,19 @@ class bitarray:
 
         self._bitsize += 1
         self._data.append(byte)
+
+    def append_byte(self, byte):
+        if self._bitsize % WORD_SIZE:
+            old_byte = self._data.pop()
+            bit_position = self.__get_bit_position(self._bitsize)
+            old_byte |= byte >> (WORD_SIZE - bit_position - 1)
+            self._data.append(old_byte)
+            self._data.append((byte << (bit_position + 1)) & 0b11111111)
+
+        else:
+            self._data.append(byte)
+
+        self._bitsize += WORD_SIZE
 
     def insert(self, index, value):
         self.__assert_correct_index(index)
@@ -250,42 +281,114 @@ def get_bit_size_from_byte_size(byte_size):
 
 
 class BitStream:
-    def __init__(self, buffer=None):
-        self.buffer = buffer or list()
-        self.current_byte = 0
-        self.current_bit = 0
+    def __init__(self, buffer=0):
+        if isinstance(buffer, BitStream):
+            buffer = buffer._buffer
 
-    @staticmethod
-    def __assert_bit(bit):
-        if is_bit(bit):
-            return True
-        else:
-            raise Exception("Not bit!")
+        self._buffer = bitarray(buffer)
+        self._current_byte = 0
+        self._current_bit = 0
 
-    def append(self, bit):
-        self.__assert_bit(bit)
-
-        self.buffer.append(int(bit))
-
-    def push(self, bit):
-        self.append(bit)
-
-    def pop(self, index=None):
-        self.buffer.pop(index)
-
-    def __getitem__(self, item):
-        return self.buffer[item]
-
-    def __setitem__(self, key, value):
-        self.__assert_bit(value)
-
-        self.buffer[key] = value
+    def __len__(self):
+        return len(self._buffer)
 
     def __str__(self):
-        return ''.join(self.buffer)
+        return str(self._buffer)
 
-    def to_hex(self):
-        pass
+    def __get_current_position(self):
+        return self._current_byte * WORD_SIZE + self._current_bit
+
+    def _increment_bit_counter(self):
+        if self._current_bit < WORD_SIZE:
+            self._current_bit += 1
+        else:
+            self._current_bit = 0
+            self._current_byte += 1
+
+    # append functions
+
+    def append_bit_one(self):
+        self._buffer.append(1)
+        self._increment_bit_counter()
+
+    def append_bit_zero(self):
+        self._buffer.append(0)
+        self._increment_bit_counter()
+
+    def append_n_bits_one(self, n_bits):
+        for i in range(n_bits):
+            self.append_bit_one()
+
+    def append_n_bits_zero(self, n_bits):
+        for i in range(n_bits):
+            self.append_bit_zero()
+
+    def append_bit(self, bit):
+        if bit:
+            self.append_bit_one()
+        else:
+            self.append_bit_zero()
+
+    def append_bits(self, source, n_bits):
+        for byte in source:
+            if n_bits >= WORD_SIZE:
+                self.append_byte(byte)
+                n_bits -= WORD_SIZE
+
+            else:
+                self.append_partial_byte(byte, n_bits)
+                break
+
+    def append_byte(self, byte):
+        self._buffer.append_byte(byte)
+        self._current_byte += 1
+
+    def append_byte_one(self):
+        self._buffer.append_byte(0b11111111)
+
+    def append_byte_zero(self):
+        self._buffer.append_byte(0b00000000)
+
+    def append_partial_byte(self, byte, n_bits):
+        for i in range(n_bits):
+            bit = byte & 0b10000000
+            self.append_bit(bit)
+            self._increment_bit_counter()
+            byte <<= 1
+
+    # read functions
+
+    def read_bit(self):
+        bit = self._buffer[self.__get_current_position()]
+        self._increment_bit_counter()
+
+        return bit
+
+    def read_byte(self):
+        position = self.__get_current_position()
+        byte = int(str(self._buffer[position:position + WORD_SIZE]), 2)
+        self._current_byte += 1
+
+        return byte
+
+    def read_bits(self, n_bits):
+        result = bytearray()
+
+        for i in range(n_bits // WORD_SIZE):
+            result.append(self.read_byte())
+
+        result.append(self.read_partial_byte(n_bits % WORD_SIZE))
+
+        return result
+
+    def read_partial_byte(self, n_bits):
+        byte = 0
+        for i in range(n_bits):
+            bit = self.read_bit()
+            byte |= bit << i
+            self._increment_bit_counter()
+
+        return byte
 
 
 #############################
@@ -332,22 +435,22 @@ class ASN1Type:
 
     # Encoding and decoding functions
 
-    def encode(self, encoding='acn'):
+    def encode(self, bit_stream, encoding='acn'):
         if encoding == 'acn':
-            return self._acn_encode()
+            return self._acn_encode(bit_stream)
         else:
             return b''
 
-    def _acn_encode(self):
+    def _acn_encode(self, bit_stream):
         return b''
 
-    def decode(self, source, encoding='acn'):
+    def decode(self, bit_stream, encoding='acn'):
         if encoding == 'acn':
-            return self._acn_decode(source)
+            return self._acn_decode(bit_stream)
         else:
             pass
 
-    def _acn_decode(self, source):
+    def _acn_decode(self, bit_stream):
         pass
 
 
@@ -502,7 +605,7 @@ class ASN1ArrayOfType(ASN1Type):
     __element__ = ASN1Type
 
     def __init__(self, size=None):
-        self._list = list()
+        self._list: typing.List[self.__element__] = list()
 
         self.set(self._get_new_list(size or self.init_value()))
 
