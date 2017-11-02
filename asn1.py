@@ -1,4 +1,4 @@
-# import typing
+import typing
 from enum import Enum
 
 
@@ -379,7 +379,7 @@ class ASN1ComposedType(ASN1Type):
 
     def _set_value(self, value):
         for attr, val in vars(value).items():
-            getattr(self, attr).set(val)
+            setattr(self, attr, val)
 
     def __getattribute__(self, item):
         initialized = object.__getattribute__(self, 'initialized')
@@ -407,7 +407,8 @@ class ASN1ComposedType(ASN1Type):
             object.__setattr__(self, key, value)
 
         else:
-            self.attributes[key] = True
+            if key in self.attributes:
+                self.attributes[key] = True
             attribute = object.__getattribute__(self, key)
 
             if isinstance(attribute, ASN1Type):
@@ -490,21 +491,33 @@ class ASN1StringWrappedType(ASN1SimpleType):
 
         return Wrapper
 
+    def get(self):
+        return self._value.wrapped
+
     def _set_value(self, value):
         self._value = self._string_wrapper(self.__base__, self.set)(value)
 
 
 class ASN1ArrayOfType(ASN1Type):
-    __size__ = 0
     __element__ = ASN1Type
 
-    def __init__(self):
-        self._list: typing.List[self.__element__] = list()
-        self._init_list()
+    def __init__(self, size=None):
+        self._list = list()
 
-    def _init_list(self):
-        for i in range(self.__size__):
-            self._list.append(self.__element__())
+        self.set(self._get_new_list(size or self.init_value()))
+
+    def init_value(self):
+        """:returns size of Array"""
+
+        return 0
+
+    def _get_new_list(self, size):
+        element_list = list()
+
+        for i in range(size):
+            element_list.append(self.__element__())
+
+        return element_list
 
     def get(self):
         return self._list
@@ -513,8 +526,12 @@ class ASN1ArrayOfType(ASN1Type):
         return isinstance(value, list)
 
     def _set_value(self, value):
+        self._list = list()
+        tmp = self.__element__()
+
         for i, elem in enumerate(value):
-            self._list[i].set(elem)
+            tmp.set(elem)
+            self._list.append(elem)
 
     def __getitem__(self, item):
         if self._check_index(item):

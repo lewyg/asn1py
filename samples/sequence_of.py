@@ -40,10 +40,12 @@ class MySqOfElement(Sequence):
 
 
 class MySqOf(SequenceOf):
-    __size__ = 25
     __element__ = MySqOfElement
 
     constraints = 'SIZE(1..20|25)'
+
+    def init_value(self):
+        return 1
 
     def check_constraints(self, value):
         result = 1 <= len(value) <= 20
