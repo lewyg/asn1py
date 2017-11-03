@@ -1,6 +1,5 @@
-from enum import Enum
-
 import typing
+from enum import Enum
 
 
 #############################
@@ -543,39 +542,39 @@ class StringWrapper:
     __setter__ = None
 
     def __init__(self, *args):
-        self.wrapped = self.__wrapped__(*args)
+        self.object = self.__wrapped__(*args)
         self.__wrap_methods()
 
     def append(self, item):
-        self.__setter__(self.wrapped + item)
+        self.__setter__(self.object + item)
 
     def insert(self, index, item):
-        self.__setter__(self.wrapped[:index] + item + self.wrapped[index:])
+        self.__setter__(self.object[:index] + item + self.object[index:])
 
     def remove(self, index=None):
-        index = index or len(self.wrapped)
-        self.__setter__(self.wrapped[:index] + self.wrapped[index + 1:])
+        index = index or len(self.object)
+        self.__setter__(self.object[:index] + self.object[index + 1:])
 
     def replace(self, key, value):
         self[key] = value
 
     def __setitem__(self, key, value):
-        if key <= len(self.wrapped):
-            if hasattr(self.wrapped, '__setitem__'):
-                self.wrapped[key] = value
+        if key <= len(self.object):
+            if hasattr(self.object, '__setitem__'):
+                self.object[key] = value
 
             else:
-                self.__setter__(self.wrapped[:key] + value + self.wrapped[key + 1:])
+                self.__setter__(self.object[:key] + value + self.object[key + 1:])
         else:
             raise AttributeError("Item {} doesn't exist!".format(key))
 
     def __getattr__(self, item):
-        return getattr(self.wrapped, item)
+        return getattr(self.object, item)
 
     def __wrap_methods(self):
         def make_proxy(attribute):
             def proxy(obj):
-                return getattr(obj.wrapped, attribute)
+                return getattr(obj.object, attribute)
 
             return proxy
 
@@ -587,15 +586,18 @@ class StringWrapper:
 
 class ASN1StringWrappedType(ASN1SimpleType):
     @staticmethod
-    def _string_wrapper(cls, setter):
+    def _string_wrapper(wrapped, setter):
         class Wrapper(StringWrapper):
-            __wrapped__ = cls
+            __wrapped__ = wrapped
             __setter__ = setter
 
         return Wrapper
 
     def get(self):
-        return self._value.wrapped
+        return self._value
+
+    def _check_type(self, value):
+        return super()._check_type(value) or (isinstance(value, StringWrapper) and value.__wrapped__ == self.__base__)
 
     def _set_value(self, value):
         self._value = self._string_wrapper(self.__base__, self.set)(value)
@@ -635,6 +637,17 @@ class ASN1ArrayOfType(ASN1Type):
         for i, elem in enumerate(value):
             tmp.set(elem)
             self._list.append(elem)
+
+    def append(self, item):
+        self._list.append(item)
+        self.set(self._list)
+
+    def remove(self, index=None):
+        index = index or len(self._list)
+        self.set(self._list[:index] + self._list[index + 1:])
+
+    def replace(self, key, value):
+        self[key] = value
 
     def __getitem__(self, item):
         if self._check_index(item):
