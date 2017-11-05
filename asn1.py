@@ -1,5 +1,6 @@
-import typing
 from enum import Enum
+
+import typing
 
 
 #############################
@@ -298,34 +299,31 @@ class BitStream:
         return self._current_byte * WORD_SIZE + self._current_bit
 
     def _increment_bit_counter(self):
-        if self._current_bit < WORD_SIZE:
-            self._current_bit += 1
-        else:
+        self._current_bit += 1
+        if self._current_bit == WORD_SIZE:
             self._current_bit = 0
-            self._current_byte += 1
+
+    def _negate_byte(self, value):
+        return (1 << WORD_SIZE) - 1 - value
 
     # append functions
 
-    def append_bit_one(self):
-        self._buffer.append(1)
+    def append_bit(self, bit):
+        self._buffer.append(bit)
         self._increment_bit_counter()
+
+    def append_bit_one(self):
+        self.append_bit(1)
 
     def append_bit_zero(self):
-        self._buffer.append(0)
-        self._increment_bit_counter()
+        self.append_bit(0)
 
-    def append_n_bits_one(self, n_bits):
+    def append_bits_one(self, n_bits):
         for i in range(n_bits):
             self.append_bit_one()
 
-    def append_n_bits_zero(self, n_bits):
+    def append_bits_zero(self, n_bits):
         for i in range(n_bits):
-            self.append_bit_zero()
-
-    def append_bit(self, bit):
-        if bit:
-            self.append_bit_one()
-        else:
             self.append_bit_zero()
 
     def append_bits(self, source, n_bits):
@@ -338,7 +336,10 @@ class BitStream:
                 self.append_partial_byte(byte, n_bits)
                 break
 
-    def append_byte(self, byte):
+    def append_byte(self, byte, negate=False):
+        if negate:
+            byte = self._negate_byte(byte)
+
         self._buffer.append_byte(byte)
         self._current_byte += 1
 
@@ -348,9 +349,12 @@ class BitStream:
     def append_byte_zero(self):
         self._buffer.append_byte(0b00000000)
 
-    def append_partial_byte(self, byte, n_bits):
+    def append_partial_byte(self, byte, n_bits, negate=False):
+        if negate:
+            byte = self._negate_byte(byte)
+
         for i in range(n_bits):
-            bit = byte & 0b10000000
+            bit = (byte & 0b10000000) >> (WORD_SIZE - 1)
             self.append_bit(bit)
             self._increment_bit_counter()
             byte <<= 1
@@ -388,6 +392,33 @@ class BitStream:
             self._increment_bit_counter()
 
         return byte
+
+    # encoding
+
+    def encode_non_negative_integer32(self, value: int, negate=False):
+        bit_length = value.bit_length()
+
+        while bit_length >= WORD_SIZE:
+            byte = (value >> (bit_length - WORD_SIZE)) & 0b11111111
+            self.append_byte(byte, negate)
+            bit_length -= WORD_SIZE
+
+        if bit_length > 0:
+            byte = (value & 0b11111111) << WORD_SIZE - bit_length
+            self.append_partial_byte(byte, bit_length, negate)
+
+    def encode_non_negative_integer(self, value: int, negate=False):
+        if value < 0x100000000:
+            self.encode_non_negative_integer32(value, negate)
+        else:
+            hi = value >> 32
+            lo = value & 0xffffffff
+
+            self.encode_non_negative_integer32(hi,  negate)
+            lo_bits = lo.bit_length()
+            self.append_bits_zero(32 - lo_bits)
+            self.encode_non_negative_integer32(lo,  negate)
+
 
 
 #############################
@@ -632,11 +663,10 @@ class ASN1ArrayOfType(ASN1Type):
 
     def _set_value(self, value):
         self._list = list()
-        tmp = self.__element__()
-
         for i, elem in enumerate(value):
+            tmp = self.__element__()
             tmp.set(elem)
-            self._list.append(elem)
+            self._list.append(tmp)
 
     def append(self, item):
         self._list.append(item)
