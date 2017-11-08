@@ -1,0 +1,198 @@
+group python;
+
+//delimiters "$", "$"
+
+RootXml(arrsFiles) ::= <<
+#!/usr/bin/env python
+# ASN.1 Data model
+
+import sys
+
+import asn1
+
+MAX = sys.maxsize
+MIN = -sys.maxsize
+
+
+$arrsFiles;separator="\n"$
+>>
+
+FileXml(sFileName, arrsModules) ::= <<
+$arrsModules;separator="\n"$
+>>
+
+ModuleXml(sName, sCName, arrsImportedModules, arrsExpTypes, arrsExpVars, arrsTases, arrsVases) ::=<<
+$arrsTases;separator="\n"$
+$arrsVases;separator="\n"$
+>>
+
+ImportedMod(sName, sCName, arrsTypes, arrsVars) ::= ""
+
+TasXml(sName, nLine, nPos, sType, sCName, sAssigOp, sContract) ::= <<
+class $sName$$sType$
+
+
+>>
+
+VasXml(sName, nLine, nPos, sType, sValue, sCName) ::= <<
+# $sName$
+class _$sName$Type$sType$
+
+
+$sName$: _$sName$Type.__typing__ = _$sName$Type($sValue$)
+
+>>
+
+TypeGeneric(nLine, nPos, sSubType) ::= <<
+$sSubType$
+>>
+
+MinMaxType(sName, sMin, sMax, bFixedSize) ::= <<
+(asn1.$sName$):
+	constraints = 'SIZE($sMin$ .. $sMax$)'  # fixedSize: $bFixedSize$
+
+	def init_value(self):
+		return $sMin$
+
+	def check_constraints(self, value):
+		result = $sMin$ <= value <= $sMax$
+		return result
+>>
+
+MinMaxType2(sName, sMin, sMax, bFixedSize) ::= <<
+(asn1.$sName$):
+	constraints = 'SIZE($sMin$ .. $sMax$)'  # fixedSize: $bFixedSize$
+
+	def init_value(self):
+		return ' ' * $sMin$
+
+	def check_constraints(self, value):
+		result = $sMin$ <= len(value) <= $sMax$
+		return result
+>>
+
+BooleanType() ::= <<
+(asn1.Boolean):
+	pass
+>>
+
+NullType() ::= <<
+(asn1.Null):
+	pass
+>>
+
+IntegerType() ::= "Integer"
+RealType() ::= "Real"
+
+BitStringType() ::= "BitString"
+OctetStringType() ::= "OctetString"
+IA5StringType() ::= "IA5String"
+NumericStringType() ::= "NumericString"
+
+AssigOpNormalType () ::= "="
+AssigOpSpecialType () ::= "::"
+
+EnumItem (sName, sCName, nVal, nLine, nPos, sCID) ::= <<
+$sCID$ = $nVal$
+>>
+
+EnumType(arrsItems) ::= <<
+(asn1.Enumerated):
+	class Value(asn1.Enumerated.Value):
+		NONE = None
+		$arrsItems;separator="\n"$
+
+	__base__ = Value
+>>
+
+ChoiceChild(sName, sCName, nLine, nPos, sChildContent, sNamePresent ) ::= <<
+# $sName$
+class _$sName$Type$sChildContent$
+
+self.$sName$Type = _$sName$Type
+self.$sName$: self.$sName$Type.__typing__ = self.$sName$Type()
+self.attributes['$sName$'] = False
+
+>>
+
+ChoiceType(arrsChildren) ::= <<
+(asn1.Choice):
+	def __init__(self):
+		self.attributes = dict()
+
+		$arrsChildren;separator="\n"$
+		self.initialized = True
+>>
+
+SequenceChild(sName, sCName, bOptional, sDefVal, nLine, nPos, sChildContent ) ::= <<
+# $sName$
+class _$sName$Type$sChildContent$
+
+self.$sName$Type = _$sName$Type
+self.$sName$: self.$sName$Type.__typing__ = self.$sName$Type()
+self.attributes['$sName$'] = False
+
+>>
+
+SequenceType(arrsChildren) ::= <<
+(asn1.Sequence):
+	def __init__(self):
+		self.attributes = dict()
+
+		$arrsChildren;separator="\n"$
+		self.initialized = True
+>>
+
+SequenceOfType(sMin, sMax, sChild) ::= <<
+(asn1.SequenceOf):
+	$SequenceOfTypeElement(sChild)$
+
+	__element__ = _ElementType
+
+	constraints = 'SIZE($sMin$ .. $sMax$)'
+
+	def init_value(self):
+		return $sMin$  # array size
+
+	def check_constraints(self, value):
+		result = $sMin$ <= len(value) <= $sMax$
+		return result
+>>
+
+SequenceOfTypeElement(sChild) ::= <<
+class _ElementType$sChild$
+>>
+
+RefTypeMinMax(sMin, sMax, sName, sModName, sCName, sCModName) ::= <<
+($sName$):
+	pass
+>>
+
+RefType(sName, sModName, sCName, sCModName) ::= <<
+($sName$):
+	pass
+>>
+
+Contract(sTypePattern, sExpr) ::= ""
+TypePatternCommonTypes() ::= ""
+TypePatternSequence(sName, sCName, arrsChildren) ::= ""
+SequencePatternChild(sName, sCName) ::= ""
+ContractExprMinMax(sPattern, sMin, sMax, bFixedSize) ::= ""
+ContractExprSize(sPattern, sMin, sMax, bFixedSize) ::= ""
+ContractExprSequence(arrsChildren) ::= ""
+
+Print_IntegerValue(nVal) ::= "$nVal$"
+Print_RealValue(dVal) ::= "$dVal$"
+Print_StringValue(v) ::= <<"$v$">>
+Print_TrueValue() ::= "True"
+Print_FalseValue() ::= "False"
+Print_BitStringValue(v) ::= <<"$v$">>
+Print_OctetStringValue(arruOctets) ::= <<'$arruOctets; format="X2"$'>>
+Print_RefValue(sName) ::= <<"$sName$">>
+Print_SeqOfValue(arrsValues) ::= <<{$arrsValues; separator=", "$}>>
+Print_SeqValue_Child(sName, sChildValue) ::= <<"$sName$": $sChildValue$>>
+Print_SeqValue(arrsValues) ::= <<{$arrsValues; separator=", "$}>>
+Print_ChValue(sAltName, sAltValue) ::= <<
+{"choice": "$sAltName$", "$sAltName$": $sAltValue$}
+>>
+Print_NullValue() ::= "None"
