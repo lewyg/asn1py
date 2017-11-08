@@ -2,16 +2,23 @@ group python;
 
 //delimiters "$", "$"
 
+/* Header of the file */
 RootXml(arrsFiles) ::= <<
-#!/usr/bin/env python
 # ASN.1 Data model
-
-import sys
 
 import asn1
 
-MAX = sys.maxsize
-MIN = -sys.maxsize
+MAX = asn1.MAX_INT
+MIN = asn1.MIN_INT
+
+
+def get_string_init_char(obj):
+    if isinstance(obj, asn1.NumericString) or isinstance(obj, asn1.BitString):
+        return '0'
+    elif isinstance(obj, asn1.OctetString):
+        return b'0'
+    else:
+        return ' '
 
 
 $arrsFiles;separator="\n"$
@@ -49,36 +56,36 @@ $sSubType$
 
 MinMaxType(sName, sMin, sMax, bFixedSize) ::= <<
 (asn1.$sName$):
-	constraints = 'SIZE($sMin$ .. $sMax$)'  # fixedSize: $bFixedSize$
-
-	def init_value(self):
-		return $sMin$
-
-	def check_constraints(self, value):
-		result = $sMin$ <= value <= $sMax$
-		return result
+    constraints = 'SIZE($sMin$ .. $sMax$)'  # fixedSize: $bFixedSize$
+    
+    def init_value(self):
+        return $sMin$
+        
+    def check_constraints(self, value):
+        result = $sMin$ <= value <= $sMax$
+        return result
 >>
 
 MinMaxType2(sName, sMin, sMax, bFixedSize) ::= <<
 (asn1.$sName$):
-	constraints = 'SIZE($sMin$ .. $sMax$)'  # fixedSize: $bFixedSize$
-
-	def init_value(self):
-		return ' ' * $sMin$
-
-	def check_constraints(self, value):
-		result = $sMin$ <= len(value) <= $sMax$
-		return result
+    constraints = 'SIZE($sMin$ .. $sMax$)'  # fixedSize: $bFixedSize$
+    
+    def init_value(self):
+        return get_string_init_char(self) * $sMin$
+        
+    def check_constraints(self, value):
+        result = $sMin$ <= len(value) <= $sMax$
+        return result
 >>
 
 BooleanType() ::= <<
 (asn1.Boolean):
-	pass
+    pass
 >>
 
 NullType() ::= <<
 (asn1.Null):
-	pass
+    pass
 >>
 
 IntegerType() ::= "Integer"
@@ -98,11 +105,11 @@ $sCID$ = $nVal$
 
 EnumType(arrsItems) ::= <<
 (asn1.Enumerated):
-	class Value(asn1.Enumerated.Value):
-		NONE = None
-		$arrsItems;separator="\n"$
-
-	__base__ = Value
+    class Value(asn1.Enumerated.Value):
+        NONE = None
+        $arrsItems;separator="\n"$
+        
+    __base__ = Value
 >>
 
 ChoiceChild(sName, sCName, nLine, nPos, sChildContent, sNamePresent ) ::= <<
@@ -117,11 +124,11 @@ self.attributes['$sName$'] = False
 
 ChoiceType(arrsChildren) ::= <<
 (asn1.Choice):
-	def __init__(self):
-		self.attributes = dict()
-
-		$arrsChildren;separator="\n"$
-		self.initialized = True
+    def __init__(self):
+        self.attributes = dict()
+        
+        $arrsChildren;separator="\n"$
+        self.initialized = True
 >>
 
 SequenceChild(sName, sCName, bOptional, sDefVal, nLine, nPos, sChildContent ) ::= <<
@@ -130,33 +137,33 @@ class _$sName$Type$sChildContent$
 
 self.$sName$Type = _$sName$Type
 self.$sName$: self.$sName$Type.__typing__ = self.$sName$Type()
-self.attributes['$sName$'] = False
+self.attributes['$sName$'] = True
 
 >>
 
 SequenceType(arrsChildren) ::= <<
 (asn1.Sequence):
-	def __init__(self):
-		self.attributes = dict()
-
-		$arrsChildren;separator="\n"$
-		self.initialized = True
+    def __init__(self):
+        self.attributes = dict()
+        
+        $arrsChildren;separator="\n"$
+        self.initialized = True
 >>
 
 SequenceOfType(sMin, sMax, sChild) ::= <<
 (asn1.SequenceOf):
-	$SequenceOfTypeElement(sChild)$
-
-	__element__ = _ElementType
-
-	constraints = 'SIZE($sMin$ .. $sMax$)'
-
-	def init_value(self):
-		return $sMin$  # array size
-
-	def check_constraints(self, value):
-		result = $sMin$ <= len(value) <= $sMax$
-		return result
+    $SequenceOfTypeElement(sChild)$
+    
+    __element__ = _ElementType
+    
+    constraints = 'SIZE($sMin$ .. $sMax$)'
+    
+    def init_value(self):
+        return $sMin$  # array size
+        
+    def check_constraints(self, value):
+        result = $sMin$ <= len(value) <= $sMax$
+        return result
 >>
 
 SequenceOfTypeElement(sChild) ::= <<
@@ -165,12 +172,12 @@ class _ElementType$sChild$
 
 RefTypeMinMax(sMin, sMax, sName, sModName, sCName, sCModName) ::= <<
 ($sName$):
-	pass
+    pass
 >>
 
 RefType(sName, sModName, sCName, sCModName) ::= <<
 ($sName$):
-	pass
+    pass
 >>
 
 Contract(sTypePattern, sExpr) ::= ""

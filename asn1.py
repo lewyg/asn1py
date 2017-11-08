@@ -1,6 +1,11 @@
+import sys
 from enum import Enum
 
 import typing
+
+WORD_SIZE = 8
+MAX_INT = sys.maxsize
+MIN_INT = -MAX_INT
 
 
 #############################
@@ -12,16 +17,15 @@ class ASN1Erorr(Exception):
 
 
 class ConstraintException(ASN1Erorr):
-    def __init__(self, class_name, constraints, value):
-        message = "Constraint failed! {} object can't be {} ( {} )".format(class_name, value, constraints)
+    def __init__(self, cls, constraints, value):
+        message = "Constraint failed! {} object can't be {} ( {} - {})".format(
+            cls.__name__, value, constraints, cls.__typing__)
         super().__init__(message)
 
 
 #############################
 #           Bits            #
 #############################
-
-WORD_SIZE = 8
 
 
 class bitarray:
@@ -39,7 +43,7 @@ class bitarray:
             self._init_from_bytes(source)
 
     def _init_from_size(self, size):
-        self._data = bytearray(get_byte_size_from_bit_size(size))
+        self._data = bytearray(get_byte_length_from_bit_length(size))
         self._bitsize = size
 
     def _init_from_iterable(self, source):
@@ -47,7 +51,7 @@ class bitarray:
 
     def _init_from_bytes(self, source):
         self._data = bytearray(source)
-        self._bitsize = get_bit_size_from_byte_size(len(self._data))
+        self._bitsize = get_bit_length_from_byte_length(len(self._data))
 
     def __getitem__(self, item):
         if isinstance(item, slice):
@@ -267,12 +271,12 @@ def is_bit(c):
     return str(c) in ['0', '1']
 
 
-def get_byte_size_from_bit_size(bit_size):
-    return (bit_size + WORD_SIZE + 1) // WORD_SIZE
+def get_byte_length_from_bit_length(bit_length):
+    return (bit_length + WORD_SIZE + 1) // WORD_SIZE
 
 
-def get_bit_size_from_byte_size(byte_size):
-    return byte_size * WORD_SIZE
+def get_bit_length_from_byte_length(byte_length):
+    return byte_length * WORD_SIZE
 
 
 #############################
@@ -305,6 +309,14 @@ class BitStream:
 
     def _negate_byte(self, value):
         return (1 << WORD_SIZE) - 1 - value
+
+    def _get_signed_int_byte_length(self, value: int):
+        if value >= 0:
+            bit_length = value.bit_length()
+        else:
+            bit_length = int(-value - 1).bit_length()
+
+        return get_byte_length_from_bit_length(bit_length)
 
     # append functions
 
@@ -414,11 +426,101 @@ class BitStream:
             hi = value >> 32
             lo = value & 0xffffffff
 
-            self.encode_non_negative_integer32(hi,  negate)
+            self.encode_non_negative_integer32(hi, negate)
             lo_bits = lo.bit_length()
             self.append_bits_zero(32 - lo_bits)
-            self.encode_non_negative_integer32(lo,  negate)
+            self.encode_non_negative_integer32(lo, negate)
 
+    def encode_constraint_number(self, value: int, min_value, max_value):
+        range_bit_length = int(max_value - min_value).bit_length()
+        value_bit_length = value.bit_length()
+        self.append_bits_zero(range_bit_length - value_bit_length)
+        self.encode_non_negative_integer(value - min_value)
+
+    def encode_semi_constraint_number(self, value: int, min_value):
+        bit_length = (value - min_value).bit_length()
+        value_byte_length = get_byte_length_from_bit_length(bit_length)
+        self.encode_constraint_number(value_byte_length, 0, 255)
+        self.append_bits_zero(value_byte_length * WORD_SIZE - bit_length)
+        self.encode_non_negative_integer(value - min_value)
+
+    def encode_number(self, value: int):
+        value_byte_length = self._get_signed_int_byte_length(value)
+        self.encode_constraint_number(value_byte_length, 0, 255)
+
+        if value >= 0:
+            self.append_bits_zero(value_byte_length * WORD_SIZE - value.bit_length())
+            self.encode_non_negative_integer(value)
+        else:
+            self.append_bits_one(value_byte_length * WORD_SIZE - (-value - 1).bit_length())
+            self.encode_non_negative_integer((-value - 1), True)
+
+    # decoding
+
+    def decode_non_negative_integer32(self, n_bits):
+        value = 0
+
+        while n_bits >= WORD_SIZE:
+            value <<= WORD_SIZE
+            value |= self.read_byte()
+            n_bits -= WORD_SIZE
+
+        if n_bits:
+            value <<= n_bits
+            value |= self.read_partial_byte(n_bits)
+
+        return value
+
+    def decode_non_negative_integer(self, n_bits):
+        if n_bits <= 32:
+            value = self.decode_non_negative_integer32(n_bits)
+        else:
+            hi = self.decode_non_negative_integer32(32)
+            lo = self.decode_non_negative_integer32(n_bits - 32)
+
+            value = hi
+            value <<= n_bits - 32
+            value |= lo
+
+        return value
+
+    def decode_constraint_number(self, min_value, max_value):
+        constraint_range = max_value - min_value
+        value = min_value
+
+        if constraint_range != 0:
+            value = self.decode_non_negative_integer(constraint_range.bit_length())
+
+        return value
+
+    def decode_semi_constraint_number(self, min_value):
+        n_bytes = self.decode_constraint_number(0, 255)
+        value = 0
+
+        for i in range(n_bytes):
+            value <<= WORD_SIZE
+            value |= self.read_byte()
+
+        value += min_value
+
+        return value
+
+    def decode_number(self):
+        n_bytes = self.decode_constraint_number(0, 255)
+        value = 0
+        is_negative = False
+
+        for i in range(n_bytes):
+            byte = self.read_byte()
+
+            if i == 0:
+                is_negative = byte > 127
+                value -= int(is_negative)
+
+            value <<= WORD_SIZE
+            value |= byte
+
+        return value
 
 
 #############################
@@ -442,7 +544,7 @@ class ASN1Type:
             self._set_value(value)
 
         else:
-            raise ConstraintException(self.__class__.__name__, self.constraints, value)
+            raise ConstraintException(type(self), self.constraints, value)
 
     def check_constraints(self, value):
         return True
@@ -748,7 +850,7 @@ class Null(ASN1SimpleType):
         self._value = None
 
     def set(self, value):
-        raise ConstraintException(self.__class__.__name__, value, "Null can't be set")
+        raise ConstraintException(type(self), value, "Null can't be set")
 
 
 class Integer(ASN1SimpleType):
