@@ -1,5 +1,6 @@
 import sys
 from enum import Enum
+from math import floor, log10
 
 import typing
 
@@ -24,7 +25,7 @@ class ConstraintException(ASN1Erorr):
 
 
 #############################
-#           Bits            #
+#         bitarray          #
 #############################
 
 
@@ -51,7 +52,7 @@ class bitarray:
 
     def _init_from_bytes(self, source):
         self._data = bytearray(source)
-        self._bitsize = get_bit_length_from_byte_length(len(self._data))
+        self._bitsize = len(self._data) * WORD_SIZE
 
     def __getitem__(self, item):
         if isinstance(item, slice):
@@ -275,8 +276,17 @@ def get_byte_length_from_bit_length(bit_length):
     return (bit_length + WORD_SIZE + 1) // WORD_SIZE
 
 
-def get_bit_length_from_byte_length(byte_length):
-    return byte_length * WORD_SIZE
+def negate_byte(value):
+    return (1 << WORD_SIZE) - 1 - value
+
+
+def get_signed_int_byte_length(value: int):
+    if value >= 0:
+        bit_length = value.bit_length()
+    else:
+        bit_length = int(-value - 1).bit_length()
+
+    return get_byte_length_from_bit_length(bit_length)
 
 
 #############################
@@ -306,17 +316,6 @@ class BitStream:
         self._current_bit += 1
         if self._current_bit == WORD_SIZE:
             self._current_bit = 0
-
-    def _negate_byte(self, value):
-        return (1 << WORD_SIZE) - 1 - value
-
-    def _get_signed_int_byte_length(self, value: int):
-        if value >= 0:
-            bit_length = value.bit_length()
-        else:
-            bit_length = int(-value - 1).bit_length()
-
-        return get_byte_length_from_bit_length(bit_length)
 
     # append functions
 
@@ -350,7 +349,7 @@ class BitStream:
 
     def append_byte(self, byte, negate=False):
         if negate:
-            byte = self._negate_byte(byte)
+            byte = negate_byte(byte)
 
         self._buffer.append_byte(byte)
         self._current_byte += 1
@@ -363,7 +362,7 @@ class BitStream:
 
     def append_partial_byte(self, byte, n_bits, negate=False):
         if negate:
-            byte = self._negate_byte(byte)
+            byte = negate_byte(byte)
 
         for i in range(n_bits):
             bit = (byte & 0b10000000) >> (WORD_SIZE - 1)
@@ -445,7 +444,7 @@ class BitStream:
         self.encode_non_negative_integer(value - min_value)
 
     def encode_number(self, value: int):
-        value_byte_length = self._get_signed_int_byte_length(value)
+        value_byte_length = get_signed_int_byte_length(value)
         self.encode_constraint_number(value_byte_length, 0, 255)
 
         if value >= 0:
@@ -454,6 +453,76 @@ class BitStream:
         else:
             self.append_bits_one(value_byte_length * WORD_SIZE - (-value - 1).bit_length())
             self.encode_non_negative_integer((-value - 1), True)
+
+    def encode_real(self, value: float):
+        """
+            Bynary encoding will be used
+            REAL = M*B^E
+            where
+            M = S*N*2^F
+
+            ENCODING is done within three parts
+            part 1 is 1 byte header
+            part 2 is 1 or more byte for exponent
+            part 3 is 3 or more byte for mantissa (N)
+
+            First byte
+            S :0-->+, S:1-->-1
+            Base will be always be 2 (implied by 6th and 5th bit which are zero)
+            ab: F  (0..3)
+            cd:00 --> 1 byte for exponent as 2's complement
+            cd:01 --> 2 byte for exponent as 2's complement
+            cd:10 --> 3 byte for exponent as 2's complement
+            cd:11 --> 1 byte for encoding the length of the exponent, then the expoent
+
+             8 7 6 5 4 3 2 1
+            +-+-+-+-+-+-+-+-+
+            |1|S|0|0|a|b|c|d|
+            +-+-+-+-+-+-+-+-+
+        """
+
+        header = 0x80
+
+        if value == 0:
+            self.encode_constraint_number(0, 0, 255)
+            return
+        elif value == MAX_INT:
+            self.encode_constraint_number(1, 0, 255)
+            self.encode_constraint_number(0x40, 0, 255)
+            return
+        elif value == MIN_INT:
+            self.encode_constraint_number(1, 0, 255)
+            self.encode_constraint_number(0x41, 0, 255)
+            return
+        if value < 0:
+            header |= 0x40
+            value = -value
+
+        exponent = int(floor(log10(abs(value))))
+        mantissa = value / 10 ** exponent
+
+        while mantissa != int(mantissa):
+            mantissa *= 10
+            exponent -= 1
+
+        mantissa = int(mantissa)
+        print(mantissa, exponent)
+
+        exp_len = get_signed_int_byte_length(exponent)
+        man_len = get_byte_length_from_bit_length(mantissa.bit_length())
+
+        self.encode_constraint_number(1 + exp_len + man_len, 0, 255)
+        self.encode_constraint_number(header, 0, 255)
+
+        if exponent > 0:
+            self.append_bits_zero(exp_len * WORD_SIZE - exponent.bit_length())
+            self.encode_non_negative_integer(exponent)
+        else:
+            self.append_bits_one(exp_len * WORD_SIZE - (-exponent - 1).bit_length())
+            self.encode_non_negative_integer((-exponent - 1), True)
+
+        self.append_bits_zero(man_len * WORD_SIZE - mantissa.bit_length())
+        self.encode_non_negative_integer(mantissa)
 
     # decoding
 
@@ -508,17 +577,67 @@ class BitStream:
     def decode_number(self):
         n_bytes = self.decode_constraint_number(0, 255)
         value = 0
-        is_negative = False
 
         for i in range(n_bytes):
             byte = self.read_byte()
-
-            if i == 0:
-                is_negative = byte > 127
-                value -= int(is_negative)
+            if i == 0 and byte > 127:
+                value = -1
 
             value <<= WORD_SIZE
             value |= byte
+
+        return value
+
+    def decode_real(self):
+        length = self.read_byte()
+        if length == 0:
+            return 0.0
+
+        header = self.read_byte()
+        if header == 0x40:
+            return MAX_INT
+        if header == 0x41:
+            return MIN_INT
+
+        return self.decode_as_binary_encoding(length - 1, header)
+
+    def decode_as_binary_encoding(self, length, header):
+        if header & 0x40:
+            sign = -1
+        else:
+            sign = 1
+
+        if header & 0x10:
+            exp_factor = 3
+        elif header & 0x20:
+            exp_factor = 4
+        else:
+            exp_factor = 1
+
+        f = (header & 0x0c) >> 2
+        factor = 1 << f
+        exp_len = (header & 0x03) + 1
+        n = 0
+        exponent = 0
+
+        for i in range(exp_len):
+            byte = self.read_byte()
+            if i == 0 and byte > 127:
+                exponent = -1
+
+            exponent <<= WORD_SIZE
+            exponent |= byte
+
+        length -= exp_len
+
+        for i in range(length):
+            n <<= WORD_SIZE
+            n |= self.read_byte()
+
+        value = n * factor * pow(10, exp_factor * exponent)
+
+        if sign < 0:
+            value = -value
 
         return value
 
@@ -567,22 +686,28 @@ class ASN1Type:
 
     # Encoding and decoding functions
 
-    def encode(self, bit_stream, encoding='acn'):
+    def encode(self, bit_stream, encoding=None):
         if encoding == 'acn':
             return self._acn_encode(bit_stream)
         else:
-            return b''
+            return self._uper_encode(bit_stream)
 
     def _acn_encode(self, bit_stream):
         return b''
 
-    def decode(self, bit_stream, encoding='acn'):
+    def _uper_encode(self, bit_stream):
+        return b''
+
+    def decode(self, bit_stream, encoding=None):
         if encoding == 'acn':
             return self._acn_decode(bit_stream)
         else:
-            pass
+            return self._uper_decode(bit_stream)
 
     def _acn_decode(self, bit_stream):
+        pass
+
+    def _uper_decode(self, bit_stream):
         pass
 
 

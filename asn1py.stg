@@ -1,8 +1,6 @@
 group python;
-
 //delimiters "$", "$"
 
-/* Header of the file */
 RootXml(arrsFiles) ::= <<
 # ASN.1 Data model
 
