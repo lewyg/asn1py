@@ -21,9 +21,10 @@ class ASN1Erorr(Exception):
 
 
 class ConstraintException(ASN1Erorr):
-    def __init__(self, cls, constraints, value):
-        message = "Constraint failed! {} object can't be {} ( {} - {})".format(
-            cls, value, constraints, cls.__typing__)
+    def __init__(self, class_name, value, constraints, expected_type):
+        message = "Constraint failed! {} object can't be {} ( {} - {} )".format(
+            class_name, value, constraints, expected_type
+        )
         super().__init__(message)
 
 
@@ -666,7 +667,15 @@ class ASN1Type:
             self._set_value(value)
 
         else:
-            raise ConstraintException(type(self), self.constraints, value)
+            if isinstance(self, ASN1SimpleType):
+                expected_type = self.__base__
+            elif isinstance(self, ASN1ArrayOfType):
+                value = '{} elements'.format(len(value))
+                expected_type = list
+            else:
+                expected_type = ASN1ComposedType
+
+            raise ConstraintException(type(self).__name__, value, self.constraints, expected_type)
 
     def check_constraints(self, value):
         return True
@@ -986,11 +995,16 @@ class Enumerated(ASN1SimpleType):
 
 
 class Null(ASN1SimpleType):
-    def __init__(self, source=None):
+    def __init__(self):
+        super().__init__(None)
         self._value = None
 
+    def init_value(self):
+        return None
+
     def set(self, value):
-        raise ConstraintException(type(self), value, "Null can't be set")
+        if value is not None:
+            raise ConstraintException(type(self).__name__, value, "Null can't be set", None)
 
 
 class Integer(ASN1SimpleType):
