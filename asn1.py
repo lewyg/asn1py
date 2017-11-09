@@ -1,6 +1,7 @@
 import sys
-import typing
 from enum import Enum
+
+import typing
 
 WORD_SIZE = 8
 INT_MAX = sys.maxsize
@@ -22,7 +23,7 @@ class ASN1Erorr(Exception):
 class ConstraintException(ASN1Erorr):
     def __init__(self, cls, constraints, value):
         message = "Constraint failed! {} object can't be {} ( {} - {})".format(
-            cls.__name__, value, constraints, cls.__typing__)
+            cls, value, constraints, cls.__typing__)
         super().__init__(message)
 
 
@@ -658,7 +659,7 @@ class ASN1Type:
         return self
 
     def set(self, value):
-        if isinstance(value, self.__class__):
+        if isinstance(value, ASN1Type):
             value = value.get()
 
         if self._check_type(value) and self.check_constraints(value):
@@ -737,11 +738,16 @@ class ASN1ComposedType(ASN1Type):
     initialized = False
 
     def _check_type(self, value):
-        return isinstance(value, self.__class__)
+        return (
+            isinstance(value, ASN1ComposedType)
+            and self.attributes.keys() == value.attributes.keys()
+            and self.__dict__.keys() == value.__dict__.keys()
+        )
 
     def _set_value(self, value):
-        for attr, val in vars(value).items():
-            setattr(self, attr, val)
+        for attr in value.attributes:
+            setattr(self, attr, object.__getattribute__(value, attr))
+            self.attributes[attr] = value.attributes[attr]
 
     def __getattribute__(self, item):
         initialized = object.__getattribute__(self, 'initialized')
@@ -768,13 +774,16 @@ class ASN1ComposedType(ASN1Type):
         if not self.initialized:
             object.__setattr__(self, key, value)
 
-        else:
-            if key in self.attributes:
-                self.attributes[key] = True
+        elif key in self.attributes:
             attribute = object.__getattribute__(self, key)
+            if isinstance(attribute, Null):
+                return
+
+            self.attributes[key] = value is not None
 
             if isinstance(attribute, ASN1Type):
-                attribute.set(value)
+                if value is not None:
+                    attribute.set(value)
 
             else:
                 object.__setattr__(self, key, value)
@@ -795,6 +804,9 @@ class ASN1ComposedType(ASN1Type):
 
     def __repr__(self):
         return str(vars(self))
+
+    def __str__(self):
+        return str({attr: str(getattr(self, attr)) for attr in self.attributes if self.attributes[attr]})
 
 
 class StringWrapper:
@@ -969,11 +981,12 @@ class Enumerated(ASN1SimpleType):
     def init_value(self):
         return self.Value.NONE
 
+    def _check_type(self, value):
+        return super()._check_type(value) or value in [e.value for e in self.Value]
+
 
 class Null(ASN1SimpleType):
-    def __init__(self):
-        super().__init__()
-
+    def __init__(self, source=None):
         self._value = None
 
     def set(self, value):
@@ -1023,6 +1036,12 @@ class BitString(ASN1StringWrappedType):
     __base__ = bitarray
     __typing__ = typing.Union['BitString', StringWrapper, __base__]
 
+    def set(self, value):
+        if isinstance(value, bytes):
+            value = bitarray(value)
+
+        super().set(value)
+
     def _check_type(self, value):
         return hasattr(value, '__iter__') and all([is_bit(c) for c in value])
 
@@ -1049,7 +1068,10 @@ class NumericString(ASN1StringWrappedType):
 
 
 class Sequence(ASN1ComposedType):
-    pass
+    def _create_from_kwargs(self, kwargs):
+        for attribute in self.attributes:
+            value = kwargs.get(attribute, None)
+            setattr(self, attribute, value)
 
 
 class Set(ASN1ComposedType):
@@ -1057,9 +1079,17 @@ class Set(ASN1ComposedType):
 
 
 class Choice(ASN1ComposedType):
+    def _append_choice(self, choice):
+        attribute = object.__getattribute__(self, choice['name'])
+
+        setattr(self, choice['name'], attribute.__class__(**choice['value']))
+
     def __setattr__(self, key, value):
         super().__setattr__(key, value)
 
+        self._set_choice(key)
+
+    def _set_choice(self, key):
         for choice in self.attributes:
             self.attributes[choice] = False
 

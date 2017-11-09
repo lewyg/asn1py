@@ -1,0 +1,81 @@
+SequenceOf DEFINITIONS AUTOMATIC TAGS ::= BEGIN
+	xxx INTEGER ( 5 .. 20) ::= 13
+
+	MyBool ::= BOOLEAN
+	vMyBool MyBool ::= TRUE
+
+	MyNull ::= NULL
+
+	MyInt ::= INTEGER (0 .. 100)
+	MyInt2 ::= INTEGER(1|2|3)
+    vMyInt MyInt ::= 88
+    v2MyInt MyInt ::= vMyInt
+
+	MyStr ::= IA5String(SIZE(1..10))(FROM("A".."Z"|"abcde"))
+	vMyStr MyStr ::= "AAABBC"
+
+	MyNumStr ::= NumericString(SIZE(3))
+	vMyNumStr MyNumStr ::= "123"
+
+	MyBit ::= BIT STRING(SIZE(16))
+	vMyBit MyBit ::= 'ffac'H
+
+	MyOct ::= OCTET STRING (SIZE(3 .. 8))
+	vMyOct MyOct ::= '12345678'H
+
+	MyReal ::= REAL(10.0..20.0|25.0..26.0)
+	vMyReal MyReal ::= 17.123
+
+	MyEnum ::= ENUMERATED {
+		alpha, beta, gamma
+	}
+	vMyEnum MyEnum ::= alpha
+
+	MyStruct ::= SEQUENCE {
+		a INTEGER (1..10),
+		b REAL OPTIONAL,
+		c MyEnum OPTIONAL
+	}
+	vMyStruct MyStruct ::= {a 2, c alpha}
+
+	MyChoice ::= CHOICE {
+		alpha MyStruct,
+		beta INTEGER,
+		octStr OCTET STRING(SIZE(4))
+	}
+	vMyChoice MyChoice ::= alpha: {a 2, b 123.234 c alpha}
+
+	MySqOf ::= SEQUENCE (SIZE(1..20|25)) OF SEQUENCE {
+		a2 INTEGER (1..10),
+		b2 REAL OPTIONAL,
+		c2 INTEGER OPTIONAL
+	}
+
+	TypeEnumerated ::= ENUMERATED {
+		red(0),
+		green(1),
+		blue(2)
+	}
+
+	My2ndEnumerated ::= TypeEnumerated
+
+	AComplexMessage ::= SEQUENCE {
+		intVal          INTEGER(0..10),
+		int2Val         INTEGER(-10..10),
+		int3Val         MyInt (10..12),
+		strVal			MyStr,
+		intArray        SEQUENCE (SIZE (10)) OF INTEGER (0..3),
+		realArray       SEQUENCE (SIZE (15)) OF REAL (0.1 .. 3.14),
+		octStrArray     SEQUENCE (SIZE (20)) OF OCTET STRING (SIZE(1..10)),
+		enumArray       SEQUENCE (SIZE (12)) OF TypeEnumerated,
+		enumValue       TypeEnumerated,
+		enumValue2      ENUMERATED {
+			truism(0),
+			falsism(1)
+		},
+		label           OCTET STRING (SIZE(10..40)),
+		bAlpha          BOOLEAN,
+		bBeta           BOOLEAN
+	}
+
+END
