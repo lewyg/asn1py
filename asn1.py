@@ -1,12 +1,14 @@
 import sys
-from enum import Enum
-from math import floor, log10
-
 import typing
+from enum import Enum
 
 WORD_SIZE = 8
-MAX_INT = sys.maxsize
-MIN_INT = -MAX_INT
+INT_MAX = sys.maxsize
+INT_MIN = -sys.maxsize
+DBL_MAX = sys.float_info.max
+DBL_MIN = sys.float_info.min
+INFINITY = float('inf')
+NAN = float('nan')
 
 
 #############################
@@ -273,7 +275,7 @@ def is_bit(c):
 
 
 def get_byte_length_from_bit_length(bit_length):
-    return (bit_length + WORD_SIZE + 1) // WORD_SIZE
+    return (bit_length + WORD_SIZE - 1) // WORD_SIZE
 
 
 def negate_byte(value):
@@ -486,11 +488,11 @@ class BitStream:
         if value == 0:
             self.encode_constraint_number(0, 0, 255)
             return
-        elif value == MAX_INT:
+        elif value == INFINITY:
             self.encode_constraint_number(1, 0, 255)
             self.encode_constraint_number(0x40, 0, 255)
             return
-        elif value == MIN_INT:
+        elif value == -INFINITY:
             self.encode_constraint_number(1, 0, 255)
             self.encode_constraint_number(0x41, 0, 255)
             return
@@ -498,15 +500,15 @@ class BitStream:
             header |= 0x40
             value = -value
 
-        exponent = int(floor(log10(abs(value))))
-        mantissa = value / 10 ** exponent
+        from math import floor, log2
+        exponent = int(floor(log2(abs(value))))
+        mantissa = value / 2 ** exponent
 
-        while mantissa != int(mantissa):
-            mantissa *= 10
+        while mantissa != int(mantissa) and mantissa < 4503599627370496:
+            mantissa *= 2
             exponent -= 1
 
         mantissa = int(mantissa)
-        print(mantissa, exponent)
 
         exp_len = get_signed_int_byte_length(exponent)
         man_len = get_byte_length_from_bit_length(mantissa.bit_length())
@@ -595,9 +597,9 @@ class BitStream:
 
         header = self.read_byte()
         if header == 0x40:
-            return MAX_INT
+            return INFINITY
         if header == 0x41:
-            return MIN_INT
+            return -INFINITY
 
         return self.decode_as_binary_encoding(length - 1, header)
 
@@ -634,7 +636,7 @@ class BitStream:
             n <<= WORD_SIZE
             n |= self.read_byte()
 
-        value = n * factor * pow(10, exp_factor * exponent)
+        value = n * factor * pow(2, exp_factor * exponent)
 
         if sign < 0:
             value = -value
@@ -686,7 +688,7 @@ class ASN1Type:
 
     # Encoding and decoding functions
 
-    def encode(self, bit_stream, encoding=None):
+    def encode(self, bit_stream: BitStream, encoding=None):
         if encoding == 'acn':
             return self._acn_encode(bit_stream)
         else:
@@ -982,6 +984,12 @@ class Integer(ASN1SimpleType):
     __base__ = int
     __typing__ = __base__
 
+    def _uper_encode(self, bit_stream: BitStream):
+        bit_stream.encode_number(self._value)
+
+    def _uper_decode(self, bit_stream: BitStream):
+        self._value = bit_stream.decode_number()
+
 
 class Real(ASN1SimpleType):
     __base__ = float
@@ -992,6 +1000,12 @@ class Real(ASN1SimpleType):
 
     def _set_value(self, value):
         self._value = float(value)
+
+    def _uper_encode(self, bit_stream: BitStream):
+        bit_stream.encode_real(self._value)
+
+    def _uper_decode(self, bit_stream: BitStream):
+        self._value = bit_stream.decode_real()
 
 
 class Boolean(ASN1SimpleType):
