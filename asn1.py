@@ -651,7 +651,7 @@ class BitStream:
 
 
 class ASN1Type:
-    __typing__ = None
+    __typing__ = 'ASN1Type'
 
     constraints = ''
 
@@ -997,6 +997,12 @@ class Enumerated(ASN1SimpleType):
     def _check_type(self, value):
         return super()._check_type(value) or value in [e.value for e in self.Value]
 
+    def _set_value(self, value):
+        if not isinstance(value, self.Value):
+            value = self.Value(value)
+
+        self._value = value
+
 
 class Null(ASN1SimpleType):
     def __init__(self):
@@ -1088,12 +1094,13 @@ class NumericString(ASN1StringWrappedType):
 class Sequence(ASN1ComposedType):
     _optional = list()
 
-    def _create_from_kwargs(self, kwargs):
-        if not kwargs:  # default initialization
+    def _init_from_source(self, source):
+        if not source:  # default initialization
             return
 
         for attribute in self.attributes:
-            value = kwargs.get(attribute, None)
+            self.attributes[attribute] = False
+            value = source.get(attribute, None)
             setattr(self, attribute, value)
 
     def _set_attribute_exists(self, key, exists: bool):
@@ -1108,10 +1115,10 @@ class Set(Sequence):
 
 
 class Choice(ASN1ComposedType):
-    def _append_choice(self, choice):
+    def _init_choice(self, choice):
         if choice:
             attribute = object.__getattribute__(self, choice['name'])
-            setattr(self, choice['name'], attribute.__class__(**choice['value']))
+            setattr(self, choice['name'], attribute.__class__(choice['value']))
 
     def __setattr__(self, key, value):
         super().__setattr__(key, value)

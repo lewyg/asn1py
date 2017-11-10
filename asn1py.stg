@@ -22,6 +22,11 @@ def get_string_init_char(obj):
         return ' '
 
 
+def add_globals(**kwargs):
+    for name, value in kwargs.items():
+        globals()[name] = value
+
+
 $arrsFiles;separator="\n"$
 # End
 
@@ -41,12 +46,16 @@ ImportedMod(sName, sCName, arrsTypes, arrsVars) ::= ""
 TasXml(sName, nLine, nPos, sType, sCName, sAssigOp, sContract) ::= <<
 class $sName$$sType$
 
+    __typing__ = '$sName$'
+
 
 >>
 
 VasXml(sName, nLine, nPos, sType, sValue, sCName) ::= <<
 # $sName$
 class _$sName$Type$sType$
+
+    __typing__ = '$sName$'
 
 
 $sName$: _$sName$Type.__typing__ = _$sName$Type($sValue$)
@@ -135,14 +144,17 @@ EnumType(arrsItems) ::= <<
         
     __base__ = Value
 
-
-# for global access
-$arrsItems;separator="\n"$
+    # for global access
+    add_globals(
+        $arrsItems;separator=",\n"$
+    )
 >>
 
 ChoiceChild(sName, sCName, nLine, nPos, sChildContent, sNamePresent ) ::= <<
 # $sName$
 class _$sName$Type$sChildContent$
+
+    __typing__ = '$sName$'
 
 self.$sName$Type = _$sName$Type
 self.$sName$: self.$sName$Type.__typing__ = self.$sName$Type()
@@ -157,31 +169,34 @@ ChoiceType(arrsChildren) ::= <<
         
         $arrsChildren;separator="\n"$
         self.initialized = True
-        self._append_choice(choice)
+        self._init_choice(choice)
 >>
 
 SequenceChild(sName, sCName, bOptional, sDefVal, nLine, nPos, sChildContent ) ::= <<
 # $sName$
 class _$sName$Type$sChildContent$
 
+    __typing__ = '$sName$'
+
 self.$sName$Type = _$sName$Type
 self.$sName$: self.$sName$Type.__typing__ = self.$sName$Type()
 self.attributes['$sName$'] = True
-$if(bFixedSize)$
+$if(bOptional)$
 self._optional.append('$sName$')
+
 $endif$
 
 >>
 
 SequenceType(arrsChildren) ::= <<
 (asn1.Sequence):
-    def __init__(self, **kwargs):
+    def __init__(self, source=None):
         self.attributes = dict()
         self._optional = list()
         
         $arrsChildren;separator="\n"$
         self.initialized = True
-        self._create_from_kwargs(kwargs)
+        self._init_from_source(source)
 >>
 
 SequenceOfType(sMin, sMax, sChild) ::= <<
@@ -229,9 +244,9 @@ Print_TrueValue() ::= "True"
 Print_FalseValue() ::= "False"
 Print_BitStringValue(v) ::= <<"$v$">>
 Print_OctetStringValue(arruOctets) ::= <<bytes.fromhex('$arruOctets; format="X2"$')>>
-Print_RefValue(sName) ::= <<$sName$>>
-Print_SeqOfValue(arrsValues) ::= <<{$arrsValues; separator=", "$}>>
+Print_RefValue(sName) ::= <<globals()['$sName$']>>
+Print_SeqOfValue(arrsValues) ::= <<[$arrsValues; separator=", "$]>>
 Print_SeqValue_Child(sName, sChildValue) ::= <<$sName$=$sChildValue$>>
-Print_SeqValue(arrsValues) ::= <<$arrsValues; separator=", "$>>
-Print_ChValue(sAltName, sAltValue) ::= <<choice=dict(name='$sAltName$', value=dict($sAltValue$))>>
+Print_SeqValue(arrsValues) ::= <<dict($arrsValues; separator=", "$)>>
+Print_ChValue(sAltName, sAltValue) ::= <<choice=dict(name='$sAltName$', value=$sAltValue$)>>
 Print_NullValue() ::= "None"
