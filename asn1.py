@@ -1,7 +1,6 @@
 import sys
-from enum import Enum
-
 import typing
+from enum import Enum
 
 WORD_SIZE = 8
 INT_MAX = sys.maxsize
@@ -750,7 +749,6 @@ class ASN1ComposedType(ASN1Type):
         return (
             isinstance(value, ASN1ComposedType)
             and self.attributes.keys() == value.attributes.keys()
-            and self.__dict__.keys() == value.__dict__.keys()
         )
 
     def _set_value(self, value):
@@ -785,17 +783,23 @@ class ASN1ComposedType(ASN1Type):
 
         elif key in self.attributes:
             attribute = object.__getattribute__(self, key)
-            if isinstance(attribute, Null):
-                return
 
-            self.attributes[key] = value is not None
-
-            if isinstance(attribute, ASN1Type):
-                if value is not None:
-                    attribute.set(value)
+            if value is not None:
+                self._set_attribute_exists(key, True)
+                attribute.set(value)
 
             else:
-                object.__setattr__(self, key, value)
+                attribute_exists = False
+                if isinstance(attribute, Null):
+                    attribute_exists = not self.attributes[key]
+
+                self._set_attribute_exists(key, attribute_exists)
+
+        else:
+            raise AttributeError("Can't set {} attribute!".format(key))
+
+    def _set_attribute_exists(self, key, exists: bool):
+        self.attributes[key] = exists
 
     def __delattr__(self, item):
         self.attributes[item] = False
@@ -1082,21 +1086,32 @@ class NumericString(ASN1StringWrappedType):
 
 
 class Sequence(ASN1ComposedType):
+    _optional = list()
+
     def _create_from_kwargs(self, kwargs):
+        if not kwargs:  # default initialization
+            return
+
         for attribute in self.attributes:
             value = kwargs.get(attribute, None)
             setattr(self, attribute, value)
 
+    def _set_attribute_exists(self, key, exists: bool):
+        if not exists and key not in self._optional:
+            raise AttributeError("Attribute {} of {} object can't be Optional!".format(key, type(self).__name__))
 
-class Set(ASN1ComposedType):
+        self.attributes[key] = exists
+
+
+class Set(Sequence):
     pass
 
 
 class Choice(ASN1ComposedType):
     def _append_choice(self, choice):
-        attribute = object.__getattribute__(self, choice['name'])
-
-        setattr(self, choice['name'], attribute.__class__(**choice['value']))
+        if choice:
+            attribute = object.__getattribute__(self, choice['name'])
+            setattr(self, choice['name'], attribute.__class__(**choice['value']))
 
     def __setattr__(self, key, value):
         super().__setattr__(key, value)

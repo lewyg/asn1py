@@ -152,7 +152,7 @@ self.attributes['$sName$'] = False
 
 ChoiceType(arrsChildren) ::= <<
 (asn1.Choice):
-    def __init__(self, choice):
+    def __init__(self, choice=None):
         self.attributes = dict()
         
         $arrsChildren;separator="\n"$
@@ -167,6 +167,9 @@ class _$sName$Type$sChildContent$
 self.$sName$Type = _$sName$Type
 self.$sName$: self.$sName$Type.__typing__ = self.$sName$Type()
 self.attributes['$sName$'] = True
+$if(bFixedSize)$
+self._optional.append('$sName$')
+$endif$
 
 >>
 
@@ -174,6 +177,7 @@ SequenceType(arrsChildren) ::= <<
 (asn1.Sequence):
     def __init__(self, **kwargs):
         self.attributes = dict()
+        self._optional = list()
         
         $arrsChildren;separator="\n"$
         self.initialized = True
