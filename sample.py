@@ -152,16 +152,16 @@ class MyStruct(asn1.Sequence):
         # a
         class _aType(asn1.Integer):
             constraints = 'SIZE(1 .. 10)'
-        
+
             def init_value(self):
                 return 1
                 
             def check_constraints(self, value):
                 result = 1 <= value <= 10
                 return result
-        
+
             __typing__ = 'a'
-        
+
         self.aType = _aType
         self.a: self.aType.__typing__ = self.aType()
         self.attributes['a'] = True
@@ -169,16 +169,16 @@ class MyStruct(asn1.Sequence):
         # b
         class _bType(asn1.Real):
             constraints = 'SIZE(MIN .. MAX)'
-        
+
             def init_value(self):
                 return MIN
                 
             def check_constraints(self, value):
                 result = MIN <= value <= MAX
                 return result
-        
+
             __typing__ = 'b'
-        
+
         self.bType = _bType
         self.b: self.bType.__typing__ = self.bType()
         self.attributes['b'] = True
@@ -187,9 +187,9 @@ class MyStruct(asn1.Sequence):
         # c
         class _cType(MyEnum):
             pass
-        
+
             __typing__ = 'c'
-        
+
         self.cType = _cType
         self.c: self.cType.__typing__ = self.cType()
         self.attributes['c'] = True
@@ -208,9 +208,9 @@ class MyChoice(asn1.Choice):
         # alpha
         class _alphaType(MyStruct):
             pass
-        
+
             __typing__ = 'alpha'
-        
+
         self.alphaType = _alphaType
         self.alpha: self.alphaType.__typing__ = self.alphaType()
         self.attributes['alpha'] = False
@@ -218,16 +218,16 @@ class MyChoice(asn1.Choice):
         # beta
         class _betaType(asn1.Integer):
             constraints = 'SIZE(MIN .. MAX)'
-        
+
             def init_value(self):
                 return MIN
                 
             def check_constraints(self, value):
                 result = MIN <= value <= MAX
                 return result
-        
+
             __typing__ = 'beta'
-        
+
         self.betaType = _betaType
         self.beta: self.betaType.__typing__ = self.betaType()
         self.attributes['beta'] = False
@@ -235,16 +235,16 @@ class MyChoice(asn1.Choice):
         # octStr
         class _octStrType(asn1.OctetString):
             constraints = 'SIZE(4)'
-        
+
             def init_value(self):
                 return get_string_init_char(self) * 4
                 
             def check_constraints(self, value):
                 result = len(value) == 4
                 return result
-        
+
             __typing__ = 'octStr'
-        
+
         self.octStrType = _octStrType
         self.octStr: self.octStrType.__typing__ = self.octStrType()
         self.attributes['octStr'] = False
@@ -264,16 +264,16 @@ class MySqOf(asn1.SequenceOf):
             # a2
             class _a2Type(asn1.Integer):
                 constraints = 'SIZE(1 .. 10)'
-            
+
                 def init_value(self):
                     return 1
                     
                 def check_constraints(self, value):
                     result = 1 <= value <= 10
                     return result
-            
+
                 __typing__ = 'a2'
-            
+
             self.a2Type = _a2Type
             self.a2: self.a2Type.__typing__ = self.a2Type()
             self.attributes['a2'] = True
@@ -281,16 +281,16 @@ class MySqOf(asn1.SequenceOf):
             # b2
             class _b2Type(asn1.Real):
                 constraints = 'SIZE(MIN .. MAX)'
-            
+
                 def init_value(self):
                     return MIN
                     
                 def check_constraints(self, value):
                     result = MIN <= value <= MAX
                     return result
-            
+
                 __typing__ = 'b2'
-            
+
             self.b2Type = _b2Type
             self.b2: self.b2Type.__typing__ = self.b2Type()
             self.attributes['b2'] = True
@@ -299,21 +299,21 @@ class MySqOf(asn1.SequenceOf):
             # c2
             class _c2Type(asn1.Integer):
                 constraints = 'SIZE(MIN .. MAX)'
-            
+
                 def init_value(self):
                     return MIN
                     
                 def check_constraints(self, value):
                     result = MIN <= value <= MAX
                     return result
-            
+
                 __typing__ = 'c2'
-            
+
             self.c2Type = _c2Type
             self.c2: self.c2Type.__typing__ = self.c2Type()
             self.attributes['c2'] = True
             self._optional.append('c2')
-    
+
             self.initialized = True
             self._init_from_source(source)
     
@@ -364,16 +364,16 @@ class AComplexMessage(asn1.Sequence):
         # intVal
         class _intValType(asn1.Integer):
             constraints = 'SIZE(0 .. 10)'
-        
+
             def init_value(self):
                 return 0
                 
             def check_constraints(self, value):
                 result = 0 <= value <= 10
                 return result
-        
+
             __typing__ = 'intVal'
-        
+
         self.intValType = _intValType
         self.intVal: self.intValType.__typing__ = self.intValType()
         self.attributes['intVal'] = True
@@ -381,16 +381,16 @@ class AComplexMessage(asn1.Sequence):
         # int2Val
         class _int2ValType(asn1.Integer):
             constraints = 'SIZE(-10 .. 10)'
-        
+
             def init_value(self):
                 return -10
                 
             def check_constraints(self, value):
                 result = -10 <= value <= 10
                 return result
-        
+
             __typing__ = 'int2Val'
-        
+
         self.int2ValType = _int2ValType
         self.int2Val: self.int2ValType.__typing__ = self.int2ValType()
         self.attributes['int2Val'] = True
@@ -398,9 +398,9 @@ class AComplexMessage(asn1.Sequence):
         # int3Val
         class _int3ValType(MyInt):
             pass
-        
+
             __typing__ = 'int3Val'
-        
+
         self.int3ValType = _int3ValType
         self.int3Val: self.int3ValType.__typing__ = self.int3ValType()
         self.attributes['int3Val'] = True
@@ -408,9 +408,9 @@ class AComplexMessage(asn1.Sequence):
         # strVal
         class _strValType(MyStr):
             pass
-        
+
             __typing__ = 'strVal'
-        
+
         self.strValType = _strValType
         self.strVal: self.strValType.__typing__ = self.strValType()
         self.attributes['strVal'] = True
@@ -419,7 +419,7 @@ class AComplexMessage(asn1.Sequence):
         class _intArrayType(asn1.SequenceOf):
             class _ElementType(asn1.Integer):
                 constraints = 'SIZE(0 .. 3)'
-            
+
                 def init_value(self):
                     return 0
                     
@@ -437,9 +437,9 @@ class AComplexMessage(asn1.Sequence):
             def check_constraints(self, value):
                 result = 10 <= len(value) <= 10
                 return result
-        
+
             __typing__ = 'intArray'
-        
+
         self.intArrayType = _intArrayType
         self.intArray: self.intArrayType.__typing__ = self.intArrayType()
         self.attributes['intArray'] = True
@@ -448,7 +448,7 @@ class AComplexMessage(asn1.Sequence):
         class _realArrayType(asn1.SequenceOf):
             class _ElementType(asn1.Real):
                 constraints = 'SIZE(1.00000000000000010000E-001 .. 3.14000000000000010000E+000)'
-            
+
                 def init_value(self):
                     return 1.00000000000000010000E-001
                     
@@ -466,9 +466,9 @@ class AComplexMessage(asn1.Sequence):
             def check_constraints(self, value):
                 result = 15 <= len(value) <= 15
                 return result
-        
+
             __typing__ = 'realArray'
-        
+
         self.realArrayType = _realArrayType
         self.realArray: self.realArrayType.__typing__ = self.realArrayType()
         self.attributes['realArray'] = True
@@ -477,7 +477,7 @@ class AComplexMessage(asn1.Sequence):
         class _octStrArrayType(asn1.SequenceOf):
             class _ElementType(asn1.OctetString):
                 constraints = 'SIZE(1 .. 10)'
-            
+
                 def init_value(self):
                     return get_string_init_char(self) * 1
                     
@@ -495,9 +495,9 @@ class AComplexMessage(asn1.Sequence):
             def check_constraints(self, value):
                 result = 20 <= len(value) <= 20
                 return result
-        
+
             __typing__ = 'octStrArray'
-        
+
         self.octStrArrayType = _octStrArrayType
         self.octStrArray: self.octStrArrayType.__typing__ = self.octStrArrayType()
         self.attributes['octStrArray'] = True
@@ -517,9 +517,9 @@ class AComplexMessage(asn1.Sequence):
             def check_constraints(self, value):
                 result = 12 <= len(value) <= 12
                 return result
-        
+
             __typing__ = 'enumArray'
-        
+
         self.enumArrayType = _enumArrayType
         self.enumArray: self.enumArrayType.__typing__ = self.enumArrayType()
         self.attributes['enumArray'] = True
@@ -527,9 +527,9 @@ class AComplexMessage(asn1.Sequence):
         # enumValue
         class _enumValueType(TypeEnumerated):
             pass
-        
+
             __typing__ = 'enumValue'
-        
+
         self.enumValueType = _enumValueType
         self.enumValue: self.enumValueType.__typing__ = self.enumValueType()
         self.attributes['enumValue'] = True
@@ -543,16 +543,16 @@ class AComplexMessage(asn1.Sequence):
                 beta = 5
                 
             __base__ = Value
-        
+
             # for global access
             add_globals(
                 truism = 0,
                 falsism = 1,
                 beta = 5
             )
-        
+
             __typing__ = 'enumValue2'
-        
+
         self.enumValue2Type = _enumValue2Type
         self.enumValue2: self.enumValue2Type.__typing__ = self.enumValue2Type()
         self.attributes['enumValue2'] = True
@@ -560,16 +560,16 @@ class AComplexMessage(asn1.Sequence):
         # label
         class _labelType(asn1.OctetString):
             constraints = 'SIZE(10 .. 40)'
-        
+
             def init_value(self):
                 return get_string_init_char(self) * 10
                 
             def check_constraints(self, value):
                 result = 10 <= len(value) <= 40
                 return result
-        
+
             __typing__ = 'label'
-        
+
         self.labelType = _labelType
         self.label: self.labelType.__typing__ = self.labelType()
         self.attributes['label'] = True
@@ -577,9 +577,9 @@ class AComplexMessage(asn1.Sequence):
         # bAlpha
         class _bAlphaType(asn1.Boolean):
             pass
-        
+
             __typing__ = 'bAlpha'
-        
+
         self.bAlphaType = _bAlphaType
         self.bAlpha: self.bAlphaType.__typing__ = self.bAlphaType()
         self.attributes['bAlpha'] = True
@@ -587,9 +587,9 @@ class AComplexMessage(asn1.Sequence):
         # bBeta
         class _bBetaType(asn1.Boolean):
             pass
-        
+
             __typing__ = 'bBeta'
-        
+
         self.bBetaType = _bBetaType
         self.bBeta: self.bBetaType.__typing__ = self.bBetaType()
         self.attributes['bBeta'] = True
