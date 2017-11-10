@@ -78,7 +78,7 @@ $endif$
 
     def init_value(self):
         return $sMin$
-        
+
     def check_constraints(self, value):
 $if(bFixedSize)$
         result = value == $sMax$
@@ -100,7 +100,7 @@ $endif$
 
     def init_value(self):
         return get_string_init_char(self) * $sMin$
-        
+
     def check_constraints(self, value):
 $if(bFixedSize)$
         result = len(value) == $sMax$
@@ -141,7 +141,7 @@ EnumType(arrsItems) ::= <<
     class Value(asn1.Enumerated.Value):
         NONE = None
         $arrsItems;separator="\n"$
-        
+
     __base__ = Value
 
     # for global access
@@ -166,7 +166,7 @@ ChoiceType(arrsChildren) ::= <<
 (asn1.Choice):
     def __init__(self, choice=None):
         self.attributes = dict()
-        
+
         $arrsChildren;separator="\n"$
         self.initialized = True
         self._init_choice(choice)
@@ -193,7 +193,7 @@ SequenceType(arrsChildren) ::= <<
     def __init__(self, source=None):
         self.attributes = dict()
         self._optional = list()
-        
+
         $arrsChildren;separator="\n"$
         self.initialized = True
         self._init_from_source(source)
@@ -202,14 +202,14 @@ SequenceType(arrsChildren) ::= <<
 SequenceOfType(sMin, sMax, sChild) ::= <<
 (asn1.SequenceOf):
     $SequenceOfTypeElement(sChild)$
-    
+
     __element__ = _ElementType
-    
+
     constraints = 'SIZE($sMin$ .. $sMax$)'
-    
+
     def init_value(self):
         return $sMin$  # array size
-        
+
     def check_constraints(self, value):
         result = $sMin$ <= len(value) <= $sMax$
         return result

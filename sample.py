@@ -39,7 +39,7 @@ class MyInt(asn1.Integer):
 
     def init_value(self):
         return 0
-        
+
     def check_constraints(self, value):
         result = 0 <= value <= 100
         return result
@@ -52,7 +52,7 @@ class MyInt2(asn1.Integer):
 
     def init_value(self):
         return 1
-        
+
     def check_constraints(self, value):
         result = 1 <= value <= 3
         return result
@@ -65,7 +65,7 @@ class MyStr(asn1.IA5String):
 
     def init_value(self):
         return get_string_init_char(self) * 1
-        
+
     def check_constraints(self, value):
         result = 1 <= len(value) <= 10
         return result
@@ -78,7 +78,7 @@ class MyNumStr(asn1.NumericString):
 
     def init_value(self):
         return get_string_init_char(self) * 3
-        
+
     def check_constraints(self, value):
         result = len(value) == 3
         return result
@@ -91,7 +91,7 @@ class MyBit(asn1.BitString):
 
     def init_value(self):
         return get_string_init_char(self) * 16
-        
+
     def check_constraints(self, value):
         result = len(value) == 16
         return result
@@ -104,7 +104,7 @@ class MyOct(asn1.OctetString):
 
     def init_value(self):
         return get_string_init_char(self) * 3
-        
+
     def check_constraints(self, value):
         result = 3 <= len(value) <= 8
         return result
@@ -117,7 +117,7 @@ class MyReal(asn1.Real):
 
     def init_value(self):
         return 1.00000000000000000000E+001
-        
+
     def check_constraints(self, value):
         result = 1.00000000000000000000E+001 <= value <= 2.60000000000000000000E+001
         return result
@@ -131,7 +131,7 @@ class MyEnum(asn1.Enumerated):
         alpha = 0
         beta = 1
         gamma = 2
-        
+
     __base__ = Value
 
     # for global access
@@ -148,14 +148,14 @@ class MyStruct(asn1.Sequence):
     def __init__(self, source=None):
         self.attributes = dict()
         self._optional = list()
-        
+
         # a
         class _aType(asn1.Integer):
             constraints = 'SIZE(1 .. 10)'
 
             def init_value(self):
                 return 1
-                
+
             def check_constraints(self, value):
                 result = 1 <= value <= 10
                 return result
@@ -172,7 +172,7 @@ class MyStruct(asn1.Sequence):
 
             def init_value(self):
                 return MIN
-                
+
             def check_constraints(self, value):
                 result = MIN <= value <= MAX
                 return result
@@ -204,7 +204,7 @@ class MyStruct(asn1.Sequence):
 class MyChoice(asn1.Choice):
     def __init__(self, choice=None):
         self.attributes = dict()
-        
+
         # alpha
         class _alphaType(MyStruct):
             pass
@@ -221,7 +221,7 @@ class MyChoice(asn1.Choice):
 
             def init_value(self):
                 return MIN
-                
+
             def check_constraints(self, value):
                 result = MIN <= value <= MAX
                 return result
@@ -238,7 +238,7 @@ class MyChoice(asn1.Choice):
 
             def init_value(self):
                 return get_string_init_char(self) * 4
-                
+
             def check_constraints(self, value):
                 result = len(value) == 4
                 return result
@@ -260,14 +260,14 @@ class MySqOf(asn1.SequenceOf):
         def __init__(self, source=None):
             self.attributes = dict()
             self._optional = list()
-            
+
             # a2
             class _a2Type(asn1.Integer):
                 constraints = 'SIZE(1 .. 10)'
 
                 def init_value(self):
                     return 1
-                    
+
                 def check_constraints(self, value):
                     result = 1 <= value <= 10
                     return result
@@ -284,7 +284,7 @@ class MySqOf(asn1.SequenceOf):
 
                 def init_value(self):
                     return MIN
-                    
+
                 def check_constraints(self, value):
                     result = MIN <= value <= MAX
                     return result
@@ -302,7 +302,7 @@ class MySqOf(asn1.SequenceOf):
 
                 def init_value(self):
                     return MIN
-                    
+
                 def check_constraints(self, value):
                     result = MIN <= value <= MAX
                     return result
@@ -316,14 +316,14 @@ class MySqOf(asn1.SequenceOf):
 
             self.initialized = True
             self._init_from_source(source)
-    
+
     __element__ = _ElementType
-    
+
     constraints = 'SIZE(1 .. 25)'
-    
+
     def init_value(self):
         return 1  # array size
-        
+
     def check_constraints(self, value):
         result = 1 <= len(value) <= 25
         return result
@@ -337,7 +337,7 @@ class TypeEnumerated(asn1.Enumerated):
         red = 0
         green = 1
         blue = 2
-        
+
     __base__ = Value
 
     # for global access
@@ -360,14 +360,14 @@ class AComplexMessage(asn1.Sequence):
     def __init__(self, source=None):
         self.attributes = dict()
         self._optional = list()
-        
+
         # intVal
         class _intValType(asn1.Integer):
             constraints = 'SIZE(0 .. 10)'
 
             def init_value(self):
                 return 0
-                
+
             def check_constraints(self, value):
                 result = 0 <= value <= 10
                 return result
@@ -384,7 +384,7 @@ class AComplexMessage(asn1.Sequence):
 
             def init_value(self):
                 return -10
-                
+
             def check_constraints(self, value):
                 result = -10 <= value <= 10
                 return result
@@ -422,18 +422,18 @@ class AComplexMessage(asn1.Sequence):
 
                 def init_value(self):
                     return 0
-                    
+
                 def check_constraints(self, value):
                     result = 0 <= value <= 3
                     return result
-            
+
             __element__ = _ElementType
-            
+
             constraints = 'SIZE(10 .. 10)'
-            
+
             def init_value(self):
                 return 10  # array size
-                
+
             def check_constraints(self, value):
                 result = 10 <= len(value) <= 10
                 return result
@@ -451,18 +451,18 @@ class AComplexMessage(asn1.Sequence):
 
                 def init_value(self):
                     return 1.00000000000000010000E-001
-                    
+
                 def check_constraints(self, value):
                     result = 1.00000000000000010000E-001 <= value <= 3.14000000000000010000E+000
                     return result
-            
+
             __element__ = _ElementType
-            
+
             constraints = 'SIZE(15 .. 15)'
-            
+
             def init_value(self):
                 return 15  # array size
-                
+
             def check_constraints(self, value):
                 result = 15 <= len(value) <= 15
                 return result
@@ -480,18 +480,18 @@ class AComplexMessage(asn1.Sequence):
 
                 def init_value(self):
                     return get_string_init_char(self) * 1
-                    
+
                 def check_constraints(self, value):
                     result = 1 <= len(value) <= 10
                     return result
-            
+
             __element__ = _ElementType
-            
+
             constraints = 'SIZE(20 .. 20)'
-            
+
             def init_value(self):
                 return 20  # array size
-                
+
             def check_constraints(self, value):
                 result = 20 <= len(value) <= 20
                 return result
@@ -506,14 +506,14 @@ class AComplexMessage(asn1.Sequence):
         class _enumArrayType(asn1.SequenceOf):
             class _ElementType(TypeEnumerated):
                 pass
-            
+
             __element__ = _ElementType
-            
+
             constraints = 'SIZE(12 .. 12)'
-            
+
             def init_value(self):
                 return 12  # array size
-                
+
             def check_constraints(self, value):
                 result = 12 <= len(value) <= 12
                 return result
@@ -541,7 +541,7 @@ class AComplexMessage(asn1.Sequence):
                 truism = 0
                 falsism = 1
                 beta = 5
-                
+
             __base__ = Value
 
             # for global access
@@ -563,7 +563,7 @@ class AComplexMessage(asn1.Sequence):
 
             def init_value(self):
                 return get_string_init_char(self) * 10
-                
+
             def check_constraints(self, value):
                 result = 10 <= len(value) <= 40
                 return result
@@ -606,7 +606,7 @@ class _xxxType(asn1.Integer):
 
     def init_value(self):
         return 5
-        
+
     def check_constraints(self, value):
         result = 5 <= value <= 20
         return result
