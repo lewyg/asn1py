@@ -136,9 +136,9 @@ class MyEnum(asn1.Enumerated):
 
     # for global access
     add_globals(
-        alpha = 0,
-        beta = 1,
-        gamma = 2
+        alpha=0,
+        beta=1,
+        gamma=2
     )
 
     __typing__ = 'MyEnum'
@@ -342,9 +342,9 @@ class TypeEnumerated(asn1.Enumerated):
 
     # for global access
     add_globals(
-        red = 0,
-        green = 1,
-        blue = 2
+        red=0,
+        green=1,
+        blue=2
     )
 
     __typing__ = 'TypeEnumerated'
@@ -546,9 +546,9 @@ class AComplexMessage(asn1.Sequence):
 
             # for global access
             add_globals(
-                truism = 0,
-                falsism = 1,
-                beta = 5
+                truism=0,
+                falsism=1,
+                beta=5
             )
 
             __typing__ = 'enumValue2'

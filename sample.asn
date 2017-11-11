@@ -1,5 +1,4 @@
 SequenceOf DEFINITIONS AUTOMATIC TAGS ::= BEGIN
-	xxx INTEGER ( 5 .. 20) ::= 13
 
 	MyBool ::= BOOLEAN
 	vMyBool MyBool ::= TRUE
