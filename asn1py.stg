@@ -244,7 +244,7 @@ Print_TrueValue() ::= "True"
 Print_FalseValue() ::= "False"
 Print_BitStringValue(v) ::= <<"$v$">>
 Print_OctetStringValue(arruOctets) ::= <<bytes.fromhex('$arruOctets; format="X2"$')>>
-Print_RefValue(sName) ::= <<globals()['$sName$']>>
+Print_RefValue(sName) ::= <<eval('$sName$')>>
 Print_SeqOfValue(arrsValues) ::= <<[$arrsValues; separator=", "$]>>
 Print_SeqValue_Child(sName, sChildValue) ::= <<$sName$=$sChildValue$>>
 Print_SeqValue(arrsValues) ::= <<dict($arrsValues; separator=", "$)>>

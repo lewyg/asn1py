@@ -136,9 +136,9 @@ class MyEnum(asn1.Enumerated):
 
     # for global access
     add_globals(
-        alpha=0,
-        beta=1,
-        gamma=2
+        alpha = 0,
+        beta = 1,
+        gamma = 2
     )
 
     __typing__ = 'MyEnum'
@@ -342,9 +342,9 @@ class TypeEnumerated(asn1.Enumerated):
 
     # for global access
     add_globals(
-        red=0,
-        green=1,
-        blue=2
+        red = 0,
+        green = 1,
+        blue = 2
     )
 
     __typing__ = 'TypeEnumerated'
@@ -540,15 +540,13 @@ class AComplexMessage(asn1.Sequence):
                 NONE = None
                 truism = 0
                 falsism = 1
-                beta = 5
 
             __base__ = Value
 
             # for global access
             add_globals(
-                truism=0,
-                falsism=1,
-                beta=5
+                truism = 0,
+                falsism = 1
             )
 
             __typing__ = 'enumValue2'
@@ -600,23 +598,6 @@ class AComplexMessage(asn1.Sequence):
     __typing__ = 'AComplexMessage'
 
 
-# xxx
-class _xxxType(asn1.Integer):
-    constraints = 'SIZE(5 .. 20)'
-
-    def init_value(self):
-        return 5
-
-    def check_constraints(self, value):
-        result = 5 <= value <= 20
-        return result
-
-    __typing__ = 'xxx'
-
-
-xxx: _xxxType.__typing__ = _xxxType(13)
-
-
 # vMyBool
 class _vMyBoolType(MyBool):
     pass
@@ -644,7 +625,7 @@ class _v2MyIntType(MyInt):
     __typing__ = 'v2MyInt'
 
 
-v2MyInt: _v2MyIntType.__typing__ = _v2MyIntType(globals()['vMyInt'])
+v2MyInt: _v2MyIntType.__typing__ = _v2MyIntType(eval('vMyInt'))
 
 
 # vMyStr
@@ -704,7 +685,7 @@ class _vMyEnumType(MyEnum):
     __typing__ = 'vMyEnum'
 
 
-vMyEnum: _vMyEnumType.__typing__ = _vMyEnumType(globals()['alpha'])
+vMyEnum: _vMyEnumType.__typing__ = _vMyEnumType(eval('alpha'))
 
 
 # vMyStruct
@@ -714,7 +695,7 @@ class _vMyStructType(MyStruct):
     __typing__ = 'vMyStruct'
 
 
-vMyStruct: _vMyStructType.__typing__ = _vMyStructType(dict(a=2, c=globals()['alpha']))
+vMyStruct: _vMyStructType.__typing__ = _vMyStructType(dict(a=2, c=eval('alpha')))
 
 
 # vMyChoice
@@ -724,7 +705,7 @@ class _vMyChoiceType(MyChoice):
     __typing__ = 'vMyChoice'
 
 
-vMyChoice: _vMyChoiceType.__typing__ = _vMyChoiceType(choice=dict(name='beta', value=8))
+vMyChoice: _vMyChoiceType.__typing__ = _vMyChoiceType(choice=dict(name='alpha', value=dict(a=2, b=1.23234000000000000000E+002, c=eval('alpha'))))
 
 
 # End

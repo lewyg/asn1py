@@ -707,6 +707,9 @@ class ASN1Type:
 
     @classmethod
     def encode(cls, bit_stream: BitStream, value, encoding=None):
+        if isinstance(value, cls):
+            value = value.get()
+
         if encoding == 'acn':
             cls._acn_encode(bit_stream, value)
         else:
@@ -1022,7 +1025,7 @@ class Enumerated(ASN1SimpleType):
         if isinstance(value, cls.Value):
             value = value.value
 
-        enum_values = [e.value for e in cls.Value]
+        enum_values = [e.value for e in cls.Value][1:]
         value_index = enum_values.index(value)
 
         bit_stream.encode_constraint_number(value_index, 0, len(enum_values) - 1)
