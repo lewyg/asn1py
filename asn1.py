@@ -899,7 +899,7 @@ class StringWrapper:
 
         ignore = {
             '__new__', '__mro__', '__class__', '__init__', '__getattribute__', '__dict__', '__getattr__',
-            '__eq__', '__add__'
+            '__eq__', '__add__', '__ne__'
         }
         for name in dir(self.__wrapped__):
             if name.startswith("__") and name not in ignore:
@@ -1032,10 +1032,16 @@ class ASN1ArrayOfType(ASN1Type):
 
 
 class Enumerated(ASN1SimpleType):
-    Value = Enum
+    class Value(Enum):
+        # NONE = None
 
-    # class Value(Enumerated.Value):
-    #     NONE = None
+        def __eq__(self, other):
+            if isinstance(other, ASN1Type):
+                other = other.get()
+            if isinstance(other, Enum):
+                other = other.value
+
+            return self.value == other
 
     __simple__ = Value
 

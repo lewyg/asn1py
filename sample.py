@@ -1110,6 +1110,3 @@ vMyChoice: _vMyChoiceType.__typing__ = _vMyChoiceType(choice=dict(name='alpha', 
 
 
 # End
-x = MyStr('asd')
-y=MyStr('asd')
-print(x,'asdasd'+y.get(), x==y)
