@@ -25,6 +25,14 @@ def add_globals(**kwargs):
 class MyBool(asn1.Boolean):
     pass
 
+    @classmethod
+    def _uper_encode(cls, bit_stream, value):
+        cls._default_uper_encode(bit_stream, value)
+
+    @classmethod
+    def _uper_decode(cls, bit_stream):
+        return cls._default_uper_decode(bit_stream)
+
     __typing__ = 'MyBool'
 
 
@@ -38,24 +46,42 @@ class MyInt(asn1.Integer):
     constraints = 'SIZE(0 .. 100)'
 
     def init_value(self):
-        return 0
+        return 0 if 0 <= 0 <= 100 else 0
 
-    def check_constraints(self, value):
+    @classmethod
+    def check_constraints(cls, value):
         result = 0 <= value <= 100
         return result
+
+    @classmethod
+    def _uper_encode(cls, bit_stream, value):
+        cls._default_uper_encode(bit_stream, value, 0, 100)
+
+    @classmethod
+    def _uper_decode(cls, bit_stream):
+        return cls._default_uper_decode(bit_stream, 0, 100)
 
     __typing__ = 'MyInt'
 
 
 class MyInt2(asn1.Integer):
-    constraints = 'SIZE(1 .. 3)'
+    constraints = 'SIZE(3 .. 66)'
 
     def init_value(self):
-        return 1
+        return 0 if 3 <= 0 <= 66 else 3
 
-    def check_constraints(self, value):
-        result = 1 <= value <= 3
+    @classmethod
+    def check_constraints(cls, value):
+        result = 3 <= value <= 66
         return result
+
+    @classmethod
+    def _uper_encode(cls, bit_stream, value):
+        cls._default_uper_encode(bit_stream, value, 3, 66)
+
+    @classmethod
+    def _uper_decode(cls, bit_stream):
+        return cls._default_uper_decode(bit_stream, 3, 66)
 
     __typing__ = 'MyInt2'
 
@@ -66,9 +92,18 @@ class MyStr(asn1.IA5String):
     def init_value(self):
         return get_string_init_char(self) * 1
 
-    def check_constraints(self, value):
+    @classmethod
+    def check_constraints(cls, value):
         result = 1 <= len(value) <= 10
         return result
+
+    @classmethod
+    def _uper_encode(cls, bit_stream, value):
+        cls._default_uper_encode(bit_stream, value, 1, 10)
+
+    @classmethod
+    def _uper_decode(cls, bit_stream):
+        return cls._default_uper_decode(bit_stream, 1, 10)
 
     __typing__ = 'MyStr'
 
@@ -79,22 +114,40 @@ class MyNumStr(asn1.NumericString):
     def init_value(self):
         return get_string_init_char(self) * 3
 
-    def check_constraints(self, value):
+    @classmethod
+    def check_constraints(cls, value):
         result = len(value) == 3
         return result
+
+    @classmethod
+    def _uper_encode(cls, bit_stream, value):
+        cls._default_uper_encode(bit_stream, value, 3, 3)
+
+    @classmethod
+    def _uper_decode(cls, bit_stream):
+        return cls._default_uper_decode(bit_stream, 3, 3)
 
     __typing__ = 'MyNumStr'
 
 
 class MyBit(asn1.BitString):
-    constraints = 'SIZE(16)'
+    constraints = 'SIZE(16 .. 202)'
 
     def init_value(self):
         return get_string_init_char(self) * 16
 
-    def check_constraints(self, value):
-        result = len(value) == 16
+    @classmethod
+    def check_constraints(cls, value):
+        result = 16 <= len(value) <= 202
         return result
+
+    @classmethod
+    def _uper_encode(cls, bit_stream, value):
+        cls._default_uper_encode(bit_stream, value, 16, 202)
+
+    @classmethod
+    def _uper_decode(cls, bit_stream):
+        return cls._default_uper_decode(bit_stream, 16, 202)
 
     __typing__ = 'MyBit'
 
@@ -105,9 +158,18 @@ class MyOct(asn1.OctetString):
     def init_value(self):
         return get_string_init_char(self) * 3
 
-    def check_constraints(self, value):
+    @classmethod
+    def check_constraints(cls, value):
         result = 3 <= len(value) <= 8
         return result
+
+    @classmethod
+    def _uper_encode(cls, bit_stream, value):
+        cls._default_uper_encode(bit_stream, value, 3, 8)
+
+    @classmethod
+    def _uper_decode(cls, bit_stream):
+        return cls._default_uper_decode(bit_stream, 3, 8)
 
     __typing__ = 'MyOct'
 
@@ -116,13 +178,71 @@ class MyReal(asn1.Real):
     constraints = 'SIZE(1.00000000000000000000E+001 .. 2.60000000000000000000E+001)'
 
     def init_value(self):
-        return 1.00000000000000000000E+001
+        return 0 if 1.00000000000000000000E+001 <= 0 <= 2.60000000000000000000E+001 else 1.00000000000000000000E+001
 
-    def check_constraints(self, value):
+    @classmethod
+    def check_constraints(cls, value):
         result = 1.00000000000000000000E+001 <= value <= 2.60000000000000000000E+001
         return result
 
+    @classmethod
+    def _uper_encode(cls, bit_stream, value):
+        cls._default_uper_encode(bit_stream, value, 1.00000000000000000000E+001, 2.60000000000000000000E+001)
+
+    @classmethod
+    def _uper_decode(cls, bit_stream):
+        return cls._default_uper_decode(bit_stream, 1.00000000000000000000E+001, 2.60000000000000000000E+001)
+
     __typing__ = 'MyReal'
+
+
+class MyReal2(MyReal):
+    pass
+
+    __typing__ = 'MyReal2'
+
+
+class MyIntArr(asn1.SequenceOf):
+    class _ElementType(asn1.Integer):
+        constraints = 'SIZE(0 .. 3)'
+
+        def init_value(self):
+            return 0 if 0 <= 0 <= 3 else 0
+
+        @classmethod
+        def check_constraints(cls, value):
+            result = 0 <= value <= 3
+            return result
+
+        @classmethod
+        def _uper_encode(cls, bit_stream, value):
+            cls._default_uper_encode(bit_stream, value, 0, 3)
+
+        @classmethod
+        def _uper_decode(cls, bit_stream):
+            return cls._default_uper_decode(bit_stream, 0, 3)
+
+    __element__ = _ElementType
+
+    constraints = 'SIZE(10 .. 10)'
+
+    def init_value(self):
+        return 10  # array size
+
+    @classmethod
+    def check_constraints(self, value):
+        result = 10 <= len(value) <= 10
+        return result
+
+    @classmethod
+    def _uper_encode(cls, bit_stream, value):
+        cls._default_uper_encode(bit_stream, value, 10, 10)
+
+    @classmethod
+    def _uper_decode(cls, bit_stream):
+        return cls._default_uper_decode(bit_stream, 10, 10)
+
+    __typing__ = 'MyIntArr'
 
 
 class MyEnum(asn1.Enumerated):
@@ -141,24 +261,41 @@ class MyEnum(asn1.Enumerated):
         gamma = 2
     )
 
+    @classmethod
+    def _uper_encode(cls, bit_stream, value):
+        cls._default_uper_encode(bit_stream, value)
+
+    @classmethod
+    def _uper_decode(cls, bit_stream):
+        return cls._default_uper_decode(bit_stream)
+
     __typing__ = 'MyEnum'
 
 
 class MyStruct(asn1.Sequence):
     def __init__(self, source=None):
         self.attributes = dict()
-        self._optional = list()
+        self.optionals = list()
 
         # a
         class _aType(asn1.Integer):
             constraints = 'SIZE(1 .. 10)'
 
             def init_value(self):
-                return 1
+                return 0 if 1 <= 0 <= 10 else 1
 
-            def check_constraints(self, value):
+            @classmethod
+            def check_constraints(cls, value):
                 result = 1 <= value <= 10
                 return result
+
+            @classmethod
+            def _uper_encode(cls, bit_stream, value):
+                cls._default_uper_encode(bit_stream, value, 1, 10)
+
+            @classmethod
+            def _uper_decode(cls, bit_stream):
+                return cls._default_uper_decode(bit_stream, 1, 10)
 
             __typing__ = 'a'
 
@@ -171,18 +308,27 @@ class MyStruct(asn1.Sequence):
             constraints = 'SIZE(MIN .. MAX)'
 
             def init_value(self):
-                return MIN
+                return 0 if MIN <= 0 <= MAX else MIN
 
-            def check_constraints(self, value):
+            @classmethod
+            def check_constraints(cls, value):
                 result = MIN <= value <= MAX
                 return result
+
+            @classmethod
+            def _uper_encode(cls, bit_stream, value):
+                cls._default_uper_encode(bit_stream, value, MIN, MAX)
+
+            @classmethod
+            def _uper_decode(cls, bit_stream):
+                return cls._default_uper_decode(bit_stream, MIN, MAX)
 
             __typing__ = 'b'
 
         self.bType = _bType
         self.b: self.bType.__typing__ = self.bType()
         self.attributes['b'] = True
-        self._optional.append('b')
+        self.optionals.append('b')
 
         # c
         class _cType(MyEnum):
@@ -193,12 +339,47 @@ class MyStruct(asn1.Sequence):
         self.cType = _cType
         self.c: self.cType.__typing__ = self.cType()
         self.attributes['c'] = True
-        self._optional.append('c')
+        self.optionals.append('c')
 
         self.initialized = True
         self._init_from_source(source)
 
+    @classmethod
+    def _uper_encode(cls, bit_stream, value):
+        cls._default_uper_encode(bit_stream, value)
+
+    @classmethod
+    def _uper_decode(cls, bit_stream):
+        return cls._default_uper_decode(bit_stream)
+
     __typing__ = 'MyStruct'
+
+
+class MyStructArr(asn1.SequenceOf):
+    class _ElementType(MyStruct):
+        pass
+
+    __element__ = _ElementType
+
+    constraints = 'SIZE(2 .. 4)'
+
+    def init_value(self):
+        return 2  # array size
+
+    @classmethod
+    def check_constraints(self, value):
+        result = 2 <= len(value) <= 4
+        return result
+
+    @classmethod
+    def _uper_encode(cls, bit_stream, value):
+        cls._default_uper_encode(bit_stream, value, 2, 4)
+
+    @classmethod
+    def _uper_decode(cls, bit_stream):
+        return cls._default_uper_decode(bit_stream, 2, 4)
+
+    __typing__ = 'MyStructArr'
 
 
 class MyChoice(asn1.Choice):
@@ -220,11 +401,20 @@ class MyChoice(asn1.Choice):
             constraints = 'SIZE(MIN .. MAX)'
 
             def init_value(self):
-                return MIN
+                return 0 if MIN <= 0 <= MAX else MIN
 
-            def check_constraints(self, value):
+            @classmethod
+            def check_constraints(cls, value):
                 result = MIN <= value <= MAX
                 return result
+
+            @classmethod
+            def _uper_encode(cls, bit_stream, value):
+                cls._default_uper_encode(bit_stream, value, MIN, MAX)
+
+            @classmethod
+            def _uper_decode(cls, bit_stream):
+                return cls._default_uper_decode(bit_stream, MIN, MAX)
 
             __typing__ = 'beta'
 
@@ -239,9 +429,18 @@ class MyChoice(asn1.Choice):
             def init_value(self):
                 return get_string_init_char(self) * 4
 
-            def check_constraints(self, value):
+            @classmethod
+            def check_constraints(cls, value):
                 result = len(value) == 4
                 return result
+
+            @classmethod
+            def _uper_encode(cls, bit_stream, value):
+                cls._default_uper_encode(bit_stream, value, 4, 4)
+
+            @classmethod
+            def _uper_decode(cls, bit_stream):
+                return cls._default_uper_decode(bit_stream, 4, 4)
 
             __typing__ = 'octStr'
 
@@ -252,6 +451,14 @@ class MyChoice(asn1.Choice):
         self.initialized = True
         self._init_choice(choice)
 
+    @classmethod
+    def _uper_encode(cls, bit_stream, value):
+        cls._default_uper_encode(bit_stream, value)
+
+    @classmethod
+    def _uper_decode(cls, bit_stream):
+        return cls._default_uper_decode(bit_stream)
+
     __typing__ = 'MyChoice'
 
 
@@ -259,18 +466,27 @@ class MySqOf(asn1.SequenceOf):
     class _ElementType(asn1.Sequence):
         def __init__(self, source=None):
             self.attributes = dict()
-            self._optional = list()
+            self.optionals = list()
 
             # a2
             class _a2Type(asn1.Integer):
                 constraints = 'SIZE(1 .. 10)'
 
                 def init_value(self):
-                    return 1
+                    return 0 if 1 <= 0 <= 10 else 1
 
-                def check_constraints(self, value):
+                @classmethod
+                def check_constraints(cls, value):
                     result = 1 <= value <= 10
                     return result
+
+                @classmethod
+                def _uper_encode(cls, bit_stream, value):
+                    cls._default_uper_encode(bit_stream, value, 1, 10)
+
+                @classmethod
+                def _uper_decode(cls, bit_stream):
+                    return cls._default_uper_decode(bit_stream, 1, 10)
 
                 __typing__ = 'a2'
 
@@ -283,39 +499,65 @@ class MySqOf(asn1.SequenceOf):
                 constraints = 'SIZE(MIN .. MAX)'
 
                 def init_value(self):
-                    return MIN
+                    return 0 if MIN <= 0 <= MAX else MIN
 
-                def check_constraints(self, value):
+                @classmethod
+                def check_constraints(cls, value):
                     result = MIN <= value <= MAX
                     return result
+
+                @classmethod
+                def _uper_encode(cls, bit_stream, value):
+                    cls._default_uper_encode(bit_stream, value, MIN, MAX)
+
+                @classmethod
+                def _uper_decode(cls, bit_stream):
+                    return cls._default_uper_decode(bit_stream, MIN, MAX)
 
                 __typing__ = 'b2'
 
             self.b2Type = _b2Type
             self.b2: self.b2Type.__typing__ = self.b2Type()
             self.attributes['b2'] = True
-            self._optional.append('b2')
+            self.optionals.append('b2')
 
             # c2
             class _c2Type(asn1.Integer):
                 constraints = 'SIZE(MIN .. MAX)'
 
                 def init_value(self):
-                    return MIN
+                    return 0 if MIN <= 0 <= MAX else MIN
 
-                def check_constraints(self, value):
+                @classmethod
+                def check_constraints(cls, value):
                     result = MIN <= value <= MAX
                     return result
+
+                @classmethod
+                def _uper_encode(cls, bit_stream, value):
+                    cls._default_uper_encode(bit_stream, value, MIN, MAX)
+
+                @classmethod
+                def _uper_decode(cls, bit_stream):
+                    return cls._default_uper_decode(bit_stream, MIN, MAX)
 
                 __typing__ = 'c2'
 
             self.c2Type = _c2Type
             self.c2: self.c2Type.__typing__ = self.c2Type()
             self.attributes['c2'] = True
-            self._optional.append('c2')
+            self.optionals.append('c2')
 
             self.initialized = True
             self._init_from_source(source)
+
+        @classmethod
+        def _uper_encode(cls, bit_stream, value):
+            cls._default_uper_encode(bit_stream, value)
+
+        @classmethod
+        def _uper_decode(cls, bit_stream):
+            return cls._default_uper_decode(bit_stream)
 
     __element__ = _ElementType
 
@@ -324,9 +566,18 @@ class MySqOf(asn1.SequenceOf):
     def init_value(self):
         return 1  # array size
 
+    @classmethod
     def check_constraints(self, value):
         result = 1 <= len(value) <= 25
         return result
+
+    @classmethod
+    def _uper_encode(cls, bit_stream, value):
+        cls._default_uper_encode(bit_stream, value, 1, 25)
+
+    @classmethod
+    def _uper_decode(cls, bit_stream):
+        return cls._default_uper_decode(bit_stream, 1, 25)
 
     __typing__ = 'MySqOf'
 
@@ -347,6 +598,14 @@ class TypeEnumerated(asn1.Enumerated):
         blue = 2
     )
 
+    @classmethod
+    def _uper_encode(cls, bit_stream, value):
+        cls._default_uper_encode(bit_stream, value)
+
+    @classmethod
+    def _uper_decode(cls, bit_stream):
+        return cls._default_uper_decode(bit_stream)
+
     __typing__ = 'TypeEnumerated'
 
 
@@ -359,18 +618,27 @@ class My2ndEnumerated(TypeEnumerated):
 class AComplexMessage(asn1.Sequence):
     def __init__(self, source=None):
         self.attributes = dict()
-        self._optional = list()
+        self.optionals = list()
 
         # intVal
         class _intValType(asn1.Integer):
             constraints = 'SIZE(0 .. 10)'
 
             def init_value(self):
-                return 0
+                return 0 if 0 <= 0 <= 10 else 0
 
-            def check_constraints(self, value):
+            @classmethod
+            def check_constraints(cls, value):
                 result = 0 <= value <= 10
                 return result
+
+            @classmethod
+            def _uper_encode(cls, bit_stream, value):
+                cls._default_uper_encode(bit_stream, value, 0, 10)
+
+            @classmethod
+            def _uper_decode(cls, bit_stream):
+                return cls._default_uper_decode(bit_stream, 0, 10)
 
             __typing__ = 'intVal'
 
@@ -383,11 +651,20 @@ class AComplexMessage(asn1.Sequence):
             constraints = 'SIZE(-10 .. 10)'
 
             def init_value(self):
-                return -10
+                return 0 if -10 <= 0 <= 10 else -10
 
-            def check_constraints(self, value):
+            @classmethod
+            def check_constraints(cls, value):
                 result = -10 <= value <= 10
                 return result
+
+            @classmethod
+            def _uper_encode(cls, bit_stream, value):
+                cls._default_uper_encode(bit_stream, value, -10, 10)
+
+            @classmethod
+            def _uper_decode(cls, bit_stream):
+                return cls._default_uper_decode(bit_stream, -10, 10)
 
             __typing__ = 'int2Val'
 
@@ -421,11 +698,20 @@ class AComplexMessage(asn1.Sequence):
                 constraints = 'SIZE(0 .. 3)'
 
                 def init_value(self):
-                    return 0
+                    return 0 if 0 <= 0 <= 3 else 0
 
-                def check_constraints(self, value):
+                @classmethod
+                def check_constraints(cls, value):
                     result = 0 <= value <= 3
                     return result
+
+                @classmethod
+                def _uper_encode(cls, bit_stream, value):
+                    cls._default_uper_encode(bit_stream, value, 0, 3)
+
+                @classmethod
+                def _uper_decode(cls, bit_stream):
+                    return cls._default_uper_decode(bit_stream, 0, 3)
 
             __element__ = _ElementType
 
@@ -434,9 +720,18 @@ class AComplexMessage(asn1.Sequence):
             def init_value(self):
                 return 10  # array size
 
+            @classmethod
             def check_constraints(self, value):
                 result = 10 <= len(value) <= 10
                 return result
+
+            @classmethod
+            def _uper_encode(cls, bit_stream, value):
+                cls._default_uper_encode(bit_stream, value, 10, 10)
+
+            @classmethod
+            def _uper_decode(cls, bit_stream):
+                return cls._default_uper_decode(bit_stream, 10, 10)
 
             __typing__ = 'intArray'
 
@@ -450,11 +745,20 @@ class AComplexMessage(asn1.Sequence):
                 constraints = 'SIZE(1.00000000000000010000E-001 .. 3.14000000000000010000E+000)'
 
                 def init_value(self):
-                    return 1.00000000000000010000E-001
+                    return 0 if 1.00000000000000010000E-001 <= 0 <= 3.14000000000000010000E+000 else 1.00000000000000010000E-001
 
-                def check_constraints(self, value):
+                @classmethod
+                def check_constraints(cls, value):
                     result = 1.00000000000000010000E-001 <= value <= 3.14000000000000010000E+000
                     return result
+
+                @classmethod
+                def _uper_encode(cls, bit_stream, value):
+                    cls._default_uper_encode(bit_stream, value, 1.00000000000000010000E-001, 3.14000000000000010000E+000)
+
+                @classmethod
+                def _uper_decode(cls, bit_stream):
+                    return cls._default_uper_decode(bit_stream, 1.00000000000000010000E-001, 3.14000000000000010000E+000)
 
             __element__ = _ElementType
 
@@ -463,9 +767,18 @@ class AComplexMessage(asn1.Sequence):
             def init_value(self):
                 return 15  # array size
 
+            @classmethod
             def check_constraints(self, value):
                 result = 15 <= len(value) <= 15
                 return result
+
+            @classmethod
+            def _uper_encode(cls, bit_stream, value):
+                cls._default_uper_encode(bit_stream, value, 15, 15)
+
+            @classmethod
+            def _uper_decode(cls, bit_stream):
+                return cls._default_uper_decode(bit_stream, 15, 15)
 
             __typing__ = 'realArray'
 
@@ -481,9 +794,18 @@ class AComplexMessage(asn1.Sequence):
                 def init_value(self):
                     return get_string_init_char(self) * 1
 
-                def check_constraints(self, value):
+                @classmethod
+                def check_constraints(cls, value):
                     result = 1 <= len(value) <= 10
                     return result
+
+                @classmethod
+                def _uper_encode(cls, bit_stream, value):
+                    cls._default_uper_encode(bit_stream, value, 1, 10)
+
+                @classmethod
+                def _uper_decode(cls, bit_stream):
+                    return cls._default_uper_decode(bit_stream, 1, 10)
 
             __element__ = _ElementType
 
@@ -492,9 +814,18 @@ class AComplexMessage(asn1.Sequence):
             def init_value(self):
                 return 20  # array size
 
+            @classmethod
             def check_constraints(self, value):
                 result = 20 <= len(value) <= 20
                 return result
+
+            @classmethod
+            def _uper_encode(cls, bit_stream, value):
+                cls._default_uper_encode(bit_stream, value, 20, 20)
+
+            @classmethod
+            def _uper_decode(cls, bit_stream):
+                return cls._default_uper_decode(bit_stream, 20, 20)
 
             __typing__ = 'octStrArray'
 
@@ -514,9 +845,18 @@ class AComplexMessage(asn1.Sequence):
             def init_value(self):
                 return 12  # array size
 
+            @classmethod
             def check_constraints(self, value):
                 result = 12 <= len(value) <= 12
                 return result
+
+            @classmethod
+            def _uper_encode(cls, bit_stream, value):
+                cls._default_uper_encode(bit_stream, value, 12, 12)
+
+            @classmethod
+            def _uper_decode(cls, bit_stream):
+                return cls._default_uper_decode(bit_stream, 12, 12)
 
             __typing__ = 'enumArray'
 
@@ -549,6 +889,14 @@ class AComplexMessage(asn1.Sequence):
                 falsism = 1
             )
 
+            @classmethod
+            def _uper_encode(cls, bit_stream, value):
+                cls._default_uper_encode(bit_stream, value)
+
+            @classmethod
+            def _uper_decode(cls, bit_stream):
+                return cls._default_uper_decode(bit_stream)
+
             __typing__ = 'enumValue2'
 
         self.enumValue2Type = _enumValue2Type
@@ -562,9 +910,18 @@ class AComplexMessage(asn1.Sequence):
             def init_value(self):
                 return get_string_init_char(self) * 10
 
-            def check_constraints(self, value):
+            @classmethod
+            def check_constraints(cls, value):
                 result = 10 <= len(value) <= 40
                 return result
+
+            @classmethod
+            def _uper_encode(cls, bit_stream, value):
+                cls._default_uper_encode(bit_stream, value, 10, 40)
+
+            @classmethod
+            def _uper_decode(cls, bit_stream):
+                return cls._default_uper_decode(bit_stream, 10, 40)
 
             __typing__ = 'label'
 
@@ -576,6 +933,14 @@ class AComplexMessage(asn1.Sequence):
         class _bAlphaType(asn1.Boolean):
             pass
 
+            @classmethod
+            def _uper_encode(cls, bit_stream, value):
+                cls._default_uper_encode(bit_stream, value)
+
+            @classmethod
+            def _uper_decode(cls, bit_stream):
+                return cls._default_uper_decode(bit_stream)
+
             __typing__ = 'bAlpha'
 
         self.bAlphaType = _bAlphaType
@@ -586,6 +951,14 @@ class AComplexMessage(asn1.Sequence):
         class _bBetaType(asn1.Boolean):
             pass
 
+            @classmethod
+            def _uper_encode(cls, bit_stream, value):
+                cls._default_uper_encode(bit_stream, value)
+
+            @classmethod
+            def _uper_decode(cls, bit_stream):
+                return cls._default_uper_decode(bit_stream)
+
             __typing__ = 'bBeta'
 
         self.bBetaType = _bBetaType
@@ -594,6 +967,14 @@ class AComplexMessage(asn1.Sequence):
 
         self.initialized = True
         self._init_from_source(source)
+
+    @classmethod
+    def _uper_encode(cls, bit_stream, value):
+        cls._default_uper_encode(bit_stream, value)
+
+    @classmethod
+    def _uper_decode(cls, bit_stream):
+        return cls._default_uper_decode(bit_stream)
 
     __typing__ = 'AComplexMessage'
 
@@ -678,6 +1059,16 @@ class _vMyRealType(MyReal):
 vMyReal: _vMyRealType.__typing__ = _vMyRealType(1.71230000000000010000E+001)
 
 
+# vMyIntArr
+class _vMyIntArrType(MyIntArr):
+    pass
+
+    __typing__ = 'vMyIntArr'
+
+
+vMyIntArr: _vMyIntArrType.__typing__ = _vMyIntArrType([1, 2, 3, 1, 2, 3, 0, 1, 0, 2])
+
+
 # vMyEnum
 class _vMyEnumType(MyEnum):
     pass
@@ -698,6 +1089,16 @@ class _vMyStructType(MyStruct):
 vMyStruct: _vMyStructType.__typing__ = _vMyStructType(dict(a=2, c=eval('alpha')))
 
 
+# vMyMyStruct
+class _vMyMyStructType(MyStructArr):
+    pass
+
+    __typing__ = 'vMyMyStruct'
+
+
+vMyMyStruct: _vMyMyStructType.__typing__ = _vMyMyStructType([dict(a=4, c=eval('beta')), dict(a=10, c=eval('gamma'), b=7.88999999999999970000E+000)])
+
+
 # vMyChoice
 class _vMyChoiceType(MyChoice):
     pass
@@ -709,3 +1110,6 @@ vMyChoice: _vMyChoiceType.__typing__ = _vMyChoiceType(choice=dict(name='alpha', 
 
 
 # End
+x = MyStr('asd')
+y=MyStr('asd')
+print(x,'asdasd'+y.get(), x==y)

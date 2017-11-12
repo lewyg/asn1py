@@ -77,9 +77,10 @@ $endif$
 
 
     def init_value(self):
-        return $sMin$
+        return 0 if $sMin$ <= 0 <= $sMax$ else $sMin$
 
-    def check_constraints(self, value):
+    @classmethod
+    def check_constraints(cls, value):
 $if(bFixedSize)$
         result = value == $sMax$
 $else$
@@ -87,6 +88,8 @@ $else$
 $endif$
 
         return result
+
+    $Encoding(sMin=sMin, sMax=sMax)$
 >>
 
 MinMaxType2(sName, sMin, sMax, bFixedSize) ::= <<
@@ -101,7 +104,8 @@ $endif$
     def init_value(self):
         return get_string_init_char(self) * $sMin$
 
-    def check_constraints(self, value):
+    @classmethod
+    def check_constraints(cls, value):
 $if(bFixedSize)$
         result = len(value) == $sMax$
 $else$
@@ -109,11 +113,34 @@ $else$
 $endif$
 
         return result
+
+    $Encoding(sMin=sMin, sMax=sMax)$
+>>
+
+Encoding(sMin, sMax) ::= <<
+@classmethod
+def _uper_encode(cls, bit_stream, value):
+$if(sMin)$
+    cls._default_uper_encode(bit_stream, value, $sMin$, $sMax$)
+$else$
+    cls._default_uper_encode(bit_stream, value)
+$endif$
+
+
+@classmethod
+def _uper_decode(cls, bit_stream):
+$if(sMin)$
+    return cls._default_uper_decode(bit_stream, $sMin$, $sMax$)
+$else$
+    return cls._default_uper_decode(bit_stream)
+$endif$
 >>
 
 BooleanType() ::= <<
 (asn1.Boolean):
     pass
+
+    $Encoding()$
 >>
 
 NullType() ::= <<
@@ -148,6 +175,8 @@ EnumType(arrsItems) ::= <<
     add_globals(
         $arrsItems;separator=",\n"$
     )
+
+    $Encoding()$
 >>
 
 ChoiceChild(sName, sCName, nLine, nPos, sChildContent, sNamePresent ) ::= <<
@@ -170,6 +199,8 @@ ChoiceType(arrsChildren) ::= <<
         $arrsChildren;separator="\n"$
         self.initialized = True
         self._init_choice(choice)
+
+    $Encoding()$
 >>
 
 SequenceChild(sName, sCName, bOptional, sDefVal, nLine, nPos, sChildContent ) ::= <<
@@ -182,7 +213,7 @@ self.$sName$Type = _$sName$Type
 self.$sName$: self.$sName$Type.__typing__ = self.$sName$Type()
 self.attributes['$sName$'] = True
 $if(bOptional)$
-self._optional.append('$sName$')
+self.optionals.append('$sName$')
 
 $endif$
 
@@ -192,11 +223,13 @@ SequenceType(arrsChildren) ::= <<
 (asn1.Sequence):
     def __init__(self, source=None):
         self.attributes = dict()
-        self._optional = list()
+        self.optionals = list()
 
         $arrsChildren;separator="\n"$
         self.initialized = True
         self._init_from_source(source)
+
+    $Encoding()$
 >>
 
 SequenceOfType(sMin, sMax, sChild) ::= <<
@@ -210,9 +243,12 @@ SequenceOfType(sMin, sMax, sChild) ::= <<
     def init_value(self):
         return $sMin$  # array size
 
+    @classmethod
     def check_constraints(self, value):
         result = $sMin$ <= len(value) <= $sMax$
         return result
+
+    $Encoding(sMin=sMin, sMax=sMax)$
 >>
 
 SequenceOfTypeElement(sChild) ::= <<

@@ -33,16 +33,16 @@ SequenceOf DEFINITIONS AUTOMATIC TAGS ::= BEGIN
 	MyStruct ::= SEQUENCE {
 		a INTEGER (1..10),
 		b REAL OPTIONAL,
-		c MyEnum OPTIONAL
+		c BOOLEAN
 	}
-	vMyStruct MyStruct ::= {a 2, c alpha}
+	vMyStruct MyStruct ::= {a 2, c TRUE}
 
 	MyChoice ::= CHOICE {
 		alpha MyStruct,
 		beta INTEGER,
 		octStr OCTET STRING(SIZE(4))
 	}
-	vMyChoice MyChoice ::= alpha: {a 2, b 123.234, c alpha}
+	vMyChoice MyChoice ::= alpha: {a 2, b 123.234, c TRUE}
 
 	MySqOf ::= SEQUENCE (SIZE(1..20|25)) OF SEQUENCE {
 		a2 INTEGER (1..10),
