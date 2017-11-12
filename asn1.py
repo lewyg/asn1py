@@ -289,7 +289,7 @@ def get_signed_int_byte_length(value: int):
     else:
         bit_length = int(-value - 1).bit_length()
 
-    return get_byte_length_from_bit_length(bit_length)
+    return get_byte_length_from_bit_length(bit_length) or 1
 
 
 #############################
@@ -312,7 +312,7 @@ class BitStream:
     def __str__(self):
         return str(self._buffer)
 
-    def __get_current_position(self):
+    def _get_current_position(self):
         return self._current_byte * WORD_SIZE + self._current_bit
 
     def _increment_bit_counter(self):
@@ -377,13 +377,13 @@ class BitStream:
     # read functions
 
     def read_bit(self):
-        bit = self._buffer[self.__get_current_position()]
+        bit = self._buffer[self._get_current_position()]
         self._increment_bit_counter()
 
         return bit
 
     def read_byte(self):
-        position = self.__get_current_position()
+        position = self._get_current_position()
         byte = int(str(self._buffer[position:position + WORD_SIZE]), 2)
         self._current_byte += 1
 
@@ -736,11 +736,11 @@ class ASN1Type:
 
     @classmethod
     def _acn_decode(cls, bit_stream: BitStream):
-        return
+        return 0
 
     @classmethod
     def _uper_decode(cls, bit_stream: BitStream):
-        return
+        return 0
 
 
 class ASN1SimpleType(ASN1Type):
@@ -749,8 +749,9 @@ class ASN1SimpleType(ASN1Type):
     def __init__(self, source=None):
         self.set(source or self.init_value())
 
-    def init_value(self):
-        return self.__simple__()
+    @classmethod
+    def init_value(cls):
+        return cls.__simple__()
 
     def get(self):
         return self._value
@@ -927,7 +928,7 @@ class ASN1StringWrappedType(ASN1SimpleType):
 
 
 class ASN1ArrayOfType(ASN1Type):
-    __element__ = ASN1Type
+    __element__ = ASN1SimpleType
 
     def __init__(self, source=None):
         if source and isinstance(source, list):
@@ -937,7 +938,8 @@ class ASN1ArrayOfType(ASN1Type):
 
         self.set(self._list)
 
-    def init_value(self):
+    @classmethod
+    def init_value(cls):
         """:returns size of Array"""
 
         return 0
@@ -1045,11 +1047,12 @@ class Enumerated(ASN1SimpleType):
 
     __simple__ = Value
 
-    def init_value(self):
-        enum_values = self._get_values_except_none()
+    @classmethod
+    def init_value(cls):
+        enum_values = cls._get_values_except_none()
         if enum_values:
-            return self.Value(enum_values[0])
-        return self.Value.NONE
+            return cls.Value(enum_values[0])
+        return cls.Value.NONE
 
     @classmethod
     def _check_type(cls, value):
@@ -1088,7 +1091,8 @@ class Null(ASN1SimpleType):
         super().__init__(None)
         self._value = None
 
-    def init_value(self):
+    @classmethod
+    def init_value(cls):
         return None
 
     def set(self, value):
@@ -1149,9 +1153,6 @@ class Boolean(ASN1SimpleType):
     @classmethod
     def _check_type(cls, value):
         return isinstance(bool(value), bool)
-
-    def init_value(self):
-        return True
 
     def _set_value(self, value):
         self._value = bool(value)
@@ -1391,8 +1392,9 @@ class SequenceOf(ASN1ArrayOfType):
             min_size = bit_stream.decode_constraint_number(min_size, max_size)
 
         tmp = list()
-        for _ in range(min_size):
-            tmp.append(cls.__element__.decode(bit_stream))
+        for i in range(min_size):
+            x = cls.__element__.decode(bit_stream)
+            tmp.append(x)
 
         result = cls(tmp)
         return result

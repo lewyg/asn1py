@@ -9,9 +9,9 @@ NAN = asn1.NAN
 
 
 def get_string_init_char(obj):
-    if isinstance(obj, asn1.NumericString) or isinstance(obj, asn1.BitString):
+    if issubclass(obj, asn1.NumericString) or issubclass(obj, asn1.BitString):
         return '0'
-    elif isinstance(obj, asn1.OctetString):
+    elif issubclass(obj, asn1.OctetString):
         return b'0'
     else:
         return ' '
@@ -45,7 +45,8 @@ class MyNull(asn1.Null):
 class MyInt(asn1.Integer):
     constraints = 'SIZE(0 .. 100)'
 
-    def init_value(self):
+    @classmethod
+    def init_value(cls):
         return 0 if 0 <= 0 <= 100 else 0
 
     @classmethod
@@ -67,7 +68,8 @@ class MyInt(asn1.Integer):
 class MyInt2(asn1.Integer):
     constraints = 'SIZE(3 .. 66)'
 
-    def init_value(self):
+    @classmethod
+    def init_value(cls):
         return 0 if 3 <= 0 <= 66 else 3
 
     @classmethod
@@ -89,8 +91,9 @@ class MyInt2(asn1.Integer):
 class MyStr(asn1.IA5String):
     constraints = 'SIZE(1 .. 10)'
 
-    def init_value(self):
-        return get_string_init_char(self) * 1
+    @classmethod
+    def init_value(cls):
+        return get_string_init_char(cls) * 1
 
     @classmethod
     def check_constraints(cls, value):
@@ -111,8 +114,9 @@ class MyStr(asn1.IA5String):
 class MyNumStr(asn1.NumericString):
     constraints = 'SIZE(3)'
 
-    def init_value(self):
-        return get_string_init_char(self) * 3
+    @classmethod
+    def init_value(cls):
+        return get_string_init_char(cls) * 3
 
     @classmethod
     def check_constraints(cls, value):
@@ -133,8 +137,9 @@ class MyNumStr(asn1.NumericString):
 class MyBit(asn1.BitString):
     constraints = 'SIZE(16 .. 202)'
 
-    def init_value(self):
-        return get_string_init_char(self) * 16
+    @classmethod
+    def init_value(cls):
+        return get_string_init_char(cls) * 16
 
     @classmethod
     def check_constraints(cls, value):
@@ -155,8 +160,9 @@ class MyBit(asn1.BitString):
 class MyOct(asn1.OctetString):
     constraints = 'SIZE(3 .. 8)'
 
-    def init_value(self):
-        return get_string_init_char(self) * 3
+    @classmethod
+    def init_value(cls):
+        return get_string_init_char(cls) * 3
 
     @classmethod
     def check_constraints(cls, value):
@@ -177,7 +183,8 @@ class MyOct(asn1.OctetString):
 class MyReal(asn1.Real):
     constraints = 'SIZE(1.00000000000000000000E+001 .. 2.60000000000000000000E+001)'
 
-    def init_value(self):
+    @classmethod
+    def init_value(cls):
         return 0 if 1.00000000000000000000E+001 <= 0 <= 2.60000000000000000000E+001 else 1.00000000000000000000E+001
 
     @classmethod
@@ -206,7 +213,8 @@ class MyIntArr(asn1.SequenceOf):
     class _ElementType(asn1.Integer):
         constraints = 'SIZE(0 .. 3)'
 
-        def init_value(self):
+        @classmethod
+        def init_value(cls):
             return 0 if 0 <= 0 <= 3 else 0
 
         @classmethod
@@ -226,7 +234,8 @@ class MyIntArr(asn1.SequenceOf):
 
     constraints = 'SIZE(10 .. 10)'
 
-    def init_value(self):
+    @classmethod
+    def init_value(cls):
         return 10  # array size
 
     @classmethod
@@ -281,7 +290,8 @@ class MyStruct(asn1.Sequence):
         class _aType(asn1.Integer):
             constraints = 'SIZE(1 .. 10)'
 
-            def init_value(self):
+            @classmethod
+            def init_value(cls):
                 return 0 if 1 <= 0 <= 10 else 1
 
             @classmethod
@@ -307,7 +317,8 @@ class MyStruct(asn1.Sequence):
         class _bType(asn1.Real):
             constraints = 'SIZE(MIN .. MAX)'
 
-            def init_value(self):
+            @classmethod
+            def init_value(cls):
                 return 0 if MIN <= 0 <= MAX else MIN
 
             @classmethod
@@ -363,7 +374,8 @@ class MyStructArr(asn1.SequenceOf):
 
     constraints = 'SIZE(2 .. 4)'
 
-    def init_value(self):
+    @classmethod
+    def init_value(cls):
         return 2  # array size
 
     @classmethod
@@ -400,7 +412,8 @@ class MyChoice(asn1.Choice):
         class _betaType(asn1.Integer):
             constraints = 'SIZE(MIN .. MAX)'
 
-            def init_value(self):
+            @classmethod
+            def init_value(cls):
                 return 0 if MIN <= 0 <= MAX else MIN
 
             @classmethod
@@ -426,8 +439,9 @@ class MyChoice(asn1.Choice):
         class _octStrType(asn1.OctetString):
             constraints = 'SIZE(4)'
 
-            def init_value(self):
-                return get_string_init_char(self) * 4
+            @classmethod
+            def init_value(cls):
+                return get_string_init_char(cls) * 4
 
             @classmethod
             def check_constraints(cls, value):
@@ -472,7 +486,8 @@ class MySqOf(asn1.SequenceOf):
             class _a2Type(asn1.Integer):
                 constraints = 'SIZE(1 .. 10)'
 
-                def init_value(self):
+                @classmethod
+                def init_value(cls):
                     return 0 if 1 <= 0 <= 10 else 1
 
                 @classmethod
@@ -498,7 +513,8 @@ class MySqOf(asn1.SequenceOf):
             class _b2Type(asn1.Real):
                 constraints = 'SIZE(MIN .. MAX)'
 
-                def init_value(self):
+                @classmethod
+                def init_value(cls):
                     return 0 if MIN <= 0 <= MAX else MIN
 
                 @classmethod
@@ -525,7 +541,8 @@ class MySqOf(asn1.SequenceOf):
             class _c2Type(asn1.Integer):
                 constraints = 'SIZE(MIN .. MAX)'
 
-                def init_value(self):
+                @classmethod
+                def init_value(cls):
                     return 0 if MIN <= 0 <= MAX else MIN
 
                 @classmethod
@@ -563,7 +580,8 @@ class MySqOf(asn1.SequenceOf):
 
     constraints = 'SIZE(1 .. 25)'
 
-    def init_value(self):
+    @classmethod
+    def init_value(cls):
         return 1  # array size
 
     @classmethod
@@ -624,7 +642,8 @@ class AComplexMessage(asn1.Sequence):
         class _intValType(asn1.Integer):
             constraints = 'SIZE(0 .. 10)'
 
-            def init_value(self):
+            @classmethod
+            def init_value(cls):
                 return 0 if 0 <= 0 <= 10 else 0
 
             @classmethod
@@ -650,7 +669,8 @@ class AComplexMessage(asn1.Sequence):
         class _int2ValType(asn1.Integer):
             constraints = 'SIZE(-10 .. 10)'
 
-            def init_value(self):
+            @classmethod
+            def init_value(cls):
                 return 0 if -10 <= 0 <= 10 else -10
 
             @classmethod
@@ -697,7 +717,8 @@ class AComplexMessage(asn1.Sequence):
             class _ElementType(asn1.Integer):
                 constraints = 'SIZE(0 .. 3)'
 
-                def init_value(self):
+                @classmethod
+                def init_value(cls):
                     return 0 if 0 <= 0 <= 3 else 0
 
                 @classmethod
@@ -717,7 +738,8 @@ class AComplexMessage(asn1.Sequence):
 
             constraints = 'SIZE(10 .. 10)'
 
-            def init_value(self):
+            @classmethod
+            def init_value(cls):
                 return 10  # array size
 
             @classmethod
@@ -744,7 +766,8 @@ class AComplexMessage(asn1.Sequence):
             class _ElementType(asn1.Real):
                 constraints = 'SIZE(1.00000000000000010000E-001 .. 3.14000000000000010000E+000)'
 
-                def init_value(self):
+                @classmethod
+                def init_value(cls):
                     return 0 if 1.00000000000000010000E-001 <= 0 <= 3.14000000000000010000E+000 else 1.00000000000000010000E-001
 
                 @classmethod
@@ -764,7 +787,8 @@ class AComplexMessage(asn1.Sequence):
 
             constraints = 'SIZE(15 .. 15)'
 
-            def init_value(self):
+            @classmethod
+            def init_value(cls):
                 return 15  # array size
 
             @classmethod
@@ -791,8 +815,9 @@ class AComplexMessage(asn1.Sequence):
             class _ElementType(asn1.OctetString):
                 constraints = 'SIZE(1 .. 10)'
 
-                def init_value(self):
-                    return get_string_init_char(self) * 1
+                @classmethod
+                def init_value(cls):
+                    return get_string_init_char(cls) * 1
 
                 @classmethod
                 def check_constraints(cls, value):
@@ -811,7 +836,8 @@ class AComplexMessage(asn1.Sequence):
 
             constraints = 'SIZE(20 .. 20)'
 
-            def init_value(self):
+            @classmethod
+            def init_value(cls):
                 return 20  # array size
 
             @classmethod
@@ -842,7 +868,8 @@ class AComplexMessage(asn1.Sequence):
 
             constraints = 'SIZE(12 .. 12)'
 
-            def init_value(self):
+            @classmethod
+            def init_value(cls):
                 return 12  # array size
 
             @classmethod
@@ -907,8 +934,9 @@ class AComplexMessage(asn1.Sequence):
         class _labelType(asn1.OctetString):
             constraints = 'SIZE(10 .. 40)'
 
-            def init_value(self):
-                return get_string_init_char(self) * 10
+            @classmethod
+            def init_value(cls):
+                return get_string_init_char(cls) * 10
 
             @classmethod
             def check_constraints(cls, value):

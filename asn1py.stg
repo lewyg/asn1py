@@ -14,9 +14,9 @@ NAN = asn1.NAN
 
 
 def get_string_init_char(obj):
-    if isinstance(obj, asn1.NumericString) or isinstance(obj, asn1.BitString):
+    if issubclass(obj, asn1.NumericString) or issubclass(obj, asn1.BitString):
         return '0'
-    elif isinstance(obj, asn1.OctetString):
+    elif issubclass(obj, asn1.OctetString):
         return b'0'
     else:
         return ' '
@@ -76,7 +76,8 @@ $else$
 $endif$
 
 
-    def init_value(self):
+    @classmethod
+    def init_value(cls):
         return 0 if $sMin$ <= 0 <= $sMax$ else $sMin$
 
     @classmethod
@@ -101,8 +102,9 @@ $else$
 $endif$
 
 
-    def init_value(self):
-        return get_string_init_char(self) * $sMin$
+    @classmethod
+    def init_value(cls):
+        return get_string_init_char(cls) * $sMin$
 
     @classmethod
     def check_constraints(cls, value):
@@ -240,7 +242,8 @@ SequenceOfType(sMin, sMax, sChild) ::= <<
 
     constraints = 'SIZE($sMin$ .. $sMax$)'
 
-    def init_value(self):
+    @classmethod
+    def init_value(cls):
         return $sMin$  # array size
 
     @classmethod
