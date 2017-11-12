@@ -1,6 +1,7 @@
 # ASN.1 Data model
 
 import asn1
+import typing
 
 MAX = asn1.INT_MAX
 MIN = asn1.INT_MIN
@@ -23,7 +24,8 @@ def add_globals(**kwargs):
 
 
 class MyBool(asn1.Boolean):
-    pass
+    def __new__(cls, *args, **kwargs) -> typing.Union[asn1.Boolean.__typing__, asn1.Boolean]:
+        return object.__new__(cls)
 
     @classmethod
     def _uper_encode(cls, bit_stream, value):
@@ -33,16 +35,15 @@ class MyBool(asn1.Boolean):
     def _uper_decode(cls, bit_stream):
         return cls._default_uper_decode(bit_stream)
 
-    __typing__ = 'MyBool'
-
 
 class MyNull(asn1.Null):
     pass
 
-    __typing__ = 'MyNull'
-
 
 class MyInt(asn1.Integer):
+    def __new__(cls, *args, **kwargs) -> typing.Union[asn1.Integer.__typing__, asn1.Integer]:
+        return object.__new__(cls)
+
     constraints = 'SIZE(0 .. 100)'
 
     @classmethod
@@ -62,10 +63,11 @@ class MyInt(asn1.Integer):
     def _uper_decode(cls, bit_stream):
         return cls._default_uper_decode(bit_stream, 0, 100)
 
-    __typing__ = 'MyInt'
-
 
 class MyInt2(asn1.Integer):
+    def __new__(cls, *args, **kwargs) -> typing.Union[asn1.Integer.__typing__, asn1.Integer]:
+        return object.__new__(cls)
+
     constraints = 'SIZE(3 .. 66)'
 
     @classmethod
@@ -85,10 +87,11 @@ class MyInt2(asn1.Integer):
     def _uper_decode(cls, bit_stream):
         return cls._default_uper_decode(bit_stream, 3, 66)
 
-    __typing__ = 'MyInt2'
-
 
 class MyStr(asn1.IA5String):
+    def __new__(cls, *args, **kwargs) -> typing.Union[asn1.IA5String.__typing__, asn1.IA5String]:
+        return object.__new__(cls)
+
     constraints = 'SIZE(1 .. 10)'
 
     @classmethod
@@ -108,10 +111,11 @@ class MyStr(asn1.IA5String):
     def _uper_decode(cls, bit_stream):
         return cls._default_uper_decode(bit_stream, 1, 10)
 
-    __typing__ = 'MyStr'
-
 
 class MyNumStr(asn1.NumericString):
+    def __new__(cls, *args, **kwargs) -> typing.Union[asn1.NumericString.__typing__, asn1.NumericString]:
+        return object.__new__(cls)
+
     constraints = 'SIZE(3)'
 
     @classmethod
@@ -131,10 +135,11 @@ class MyNumStr(asn1.NumericString):
     def _uper_decode(cls, bit_stream):
         return cls._default_uper_decode(bit_stream, 3, 3)
 
-    __typing__ = 'MyNumStr'
-
 
 class MyBit(asn1.BitString):
+    def __new__(cls, *args, **kwargs) -> typing.Union[asn1.BitString.__typing__, asn1.BitString]:
+        return object.__new__(cls)
+
     constraints = 'SIZE(16 .. 202)'
 
     @classmethod
@@ -154,10 +159,11 @@ class MyBit(asn1.BitString):
     def _uper_decode(cls, bit_stream):
         return cls._default_uper_decode(bit_stream, 16, 202)
 
-    __typing__ = 'MyBit'
-
 
 class MyOct(asn1.OctetString):
+    def __new__(cls, *args, **kwargs) -> typing.Union[asn1.OctetString.__typing__, asn1.OctetString]:
+        return object.__new__(cls)
+
     constraints = 'SIZE(3 .. 8)'
 
     @classmethod
@@ -177,10 +183,11 @@ class MyOct(asn1.OctetString):
     def _uper_decode(cls, bit_stream):
         return cls._default_uper_decode(bit_stream, 3, 8)
 
-    __typing__ = 'MyOct'
-
 
 class MyReal(asn1.Real):
+    def __new__(cls, *args, **kwargs) -> typing.Union[asn1.Real.__typing__, asn1.Real]:
+        return object.__new__(cls)
+
     constraints = 'SIZE(1.00000000000000000000E+001 .. 2.60000000000000000000E+001)'
 
     @classmethod
@@ -200,17 +207,17 @@ class MyReal(asn1.Real):
     def _uper_decode(cls, bit_stream):
         return cls._default_uper_decode(bit_stream, 1.00000000000000000000E+001, 2.60000000000000000000E+001)
 
-    __typing__ = 'MyReal'
-
 
 class MyReal2(MyReal):
-    pass
-
-    __typing__ = 'MyReal2'
+    def __new__(cls, *args, **kwargs) -> typing.Union[MyReal.__typing__, MyReal]:
+        return object.__new__(cls)
 
 
 class MyIntArr(asn1.SequenceOf):
     class _ElementType(asn1.Integer):
+        def __new__(cls, *args, **kwargs) -> typing.Union[asn1.Integer.__typing__, asn1.Integer]:
+            return object.__new__(cls)
+
         constraints = 'SIZE(0 .. 3)'
 
         @classmethod
@@ -251,8 +258,6 @@ class MyIntArr(asn1.SequenceOf):
     def _uper_decode(cls, bit_stream):
         return cls._default_uper_decode(bit_stream, 10, 10)
 
-    __typing__ = 'MyIntArr'
-
 
 class MyEnum(asn1.Enumerated):
     class Value(asn1.Enumerated.Value):
@@ -278,8 +283,6 @@ class MyEnum(asn1.Enumerated):
     def _uper_decode(cls, bit_stream):
         return cls._default_uper_decode(bit_stream)
 
-    __typing__ = 'MyEnum'
-
 
 class MyStruct(asn1.Sequence):
     def __init__(self, source=None):
@@ -288,6 +291,9 @@ class MyStruct(asn1.Sequence):
 
         # a
         class _aType(asn1.Integer):
+            def __new__(cls, *args, **kwargs) -> typing.Union[asn1.Integer.__typing__, asn1.Integer]:
+                return object.__new__(cls)
+
             constraints = 'SIZE(1 .. 10)'
 
             @classmethod
@@ -307,14 +313,15 @@ class MyStruct(asn1.Sequence):
             def _uper_decode(cls, bit_stream):
                 return cls._default_uper_decode(bit_stream, 1, 10)
 
-            __typing__ = 'a'
-
         self.aType = _aType
-        self.a: self.aType.__typing__ = self.aType()
+        self.a = self.aType()
         self.attributes['a'] = True
 
         # b
         class _bType(asn1.Real):
+            def __new__(cls, *args, **kwargs) -> typing.Union[asn1.Real.__typing__, asn1.Real]:
+                return object.__new__(cls)
+
             constraints = 'SIZE(MIN .. MAX)'
 
             @classmethod
@@ -334,21 +341,18 @@ class MyStruct(asn1.Sequence):
             def _uper_decode(cls, bit_stream):
                 return cls._default_uper_decode(bit_stream, MIN, MAX)
 
-            __typing__ = 'b'
-
         self.bType = _bType
-        self.b: self.bType.__typing__ = self.bType()
+        self.b = self.bType()
         self.attributes['b'] = True
         self.optionals.append('b')
 
         # c
         class _cType(MyEnum):
-            pass
-
-            __typing__ = 'c'
+            def __new__(cls, *args, **kwargs) -> typing.Union[MyEnum.__typing__, MyEnum]:
+                return object.__new__(cls)
 
         self.cType = _cType
-        self.c: self.cType.__typing__ = self.cType()
+        self.c = self.cType()
         self.attributes['c'] = True
         self.optionals.append('c')
 
@@ -363,12 +367,11 @@ class MyStruct(asn1.Sequence):
     def _uper_decode(cls, bit_stream):
         return cls._default_uper_decode(bit_stream)
 
-    __typing__ = 'MyStruct'
-
 
 class MyStructArr(asn1.SequenceOf):
     class _ElementType(MyStruct):
-        pass
+        def __new__(cls, *args, **kwargs) -> typing.Union[MyStruct.__typing__, MyStruct]:
+            return object.__new__(cls)
 
     __element__ = _ElementType
 
@@ -391,8 +394,6 @@ class MyStructArr(asn1.SequenceOf):
     def _uper_decode(cls, bit_stream):
         return cls._default_uper_decode(bit_stream, 2, 4)
 
-    __typing__ = 'MyStructArr'
-
 
 class MyChoice(asn1.Choice):
     def __init__(self, choice=None):
@@ -400,16 +401,18 @@ class MyChoice(asn1.Choice):
 
         # alpha
         class _alphaType(MyStruct):
-            pass
-
-            __typing__ = 'alpha'
+            def __new__(cls, *args, **kwargs) -> typing.Union[MyStruct.__typing__, MyStruct]:
+                return object.__new__(cls)
 
         self.alphaType = _alphaType
-        self.alpha: self.alphaType.__typing__ = self.alphaType()
+        self.alpha = self.alphaType()
         self.attributes['alpha'] = False
 
         # beta
         class _betaType(asn1.Integer):
+            def __new__(cls, *args, **kwargs) -> typing.Union[asn1.Integer.__typing__, asn1.Integer]:
+                return object.__new__(cls)
+
             constraints = 'SIZE(MIN .. MAX)'
 
             @classmethod
@@ -429,14 +432,15 @@ class MyChoice(asn1.Choice):
             def _uper_decode(cls, bit_stream):
                 return cls._default_uper_decode(bit_stream, MIN, MAX)
 
-            __typing__ = 'beta'
-
         self.betaType = _betaType
-        self.beta: self.betaType.__typing__ = self.betaType()
+        self.beta = self.betaType()
         self.attributes['beta'] = False
 
         # octStr
         class _octStrType(asn1.OctetString):
+            def __new__(cls, *args, **kwargs) -> typing.Union[asn1.OctetString.__typing__, asn1.OctetString]:
+                return object.__new__(cls)
+
             constraints = 'SIZE(4)'
 
             @classmethod
@@ -456,10 +460,8 @@ class MyChoice(asn1.Choice):
             def _uper_decode(cls, bit_stream):
                 return cls._default_uper_decode(bit_stream, 4, 4)
 
-            __typing__ = 'octStr'
-
         self.octStrType = _octStrType
-        self.octStr: self.octStrType.__typing__ = self.octStrType()
+        self.octStr = self.octStrType()
         self.attributes['octStr'] = False
 
         self.initialized = True
@@ -473,8 +475,6 @@ class MyChoice(asn1.Choice):
     def _uper_decode(cls, bit_stream):
         return cls._default_uper_decode(bit_stream)
 
-    __typing__ = 'MyChoice'
-
 
 class MySqOf(asn1.SequenceOf):
     class _ElementType(asn1.Sequence):
@@ -484,6 +484,9 @@ class MySqOf(asn1.SequenceOf):
 
             # a2
             class _a2Type(asn1.Integer):
+                def __new__(cls, *args, **kwargs) -> typing.Union[asn1.Integer.__typing__, asn1.Integer]:
+                    return object.__new__(cls)
+
                 constraints = 'SIZE(1 .. 10)'
 
                 @classmethod
@@ -503,14 +506,15 @@ class MySqOf(asn1.SequenceOf):
                 def _uper_decode(cls, bit_stream):
                     return cls._default_uper_decode(bit_stream, 1, 10)
 
-                __typing__ = 'a2'
-
             self.a2Type = _a2Type
-            self.a2: self.a2Type.__typing__ = self.a2Type()
+            self.a2 = self.a2Type()
             self.attributes['a2'] = True
 
             # b2
             class _b2Type(asn1.Real):
+                def __new__(cls, *args, **kwargs) -> typing.Union[asn1.Real.__typing__, asn1.Real]:
+                    return object.__new__(cls)
+
                 constraints = 'SIZE(MIN .. MAX)'
 
                 @classmethod
@@ -530,15 +534,16 @@ class MySqOf(asn1.SequenceOf):
                 def _uper_decode(cls, bit_stream):
                     return cls._default_uper_decode(bit_stream, MIN, MAX)
 
-                __typing__ = 'b2'
-
             self.b2Type = _b2Type
-            self.b2: self.b2Type.__typing__ = self.b2Type()
+            self.b2 = self.b2Type()
             self.attributes['b2'] = True
             self.optionals.append('b2')
 
             # c2
             class _c2Type(asn1.Integer):
+                def __new__(cls, *args, **kwargs) -> typing.Union[asn1.Integer.__typing__, asn1.Integer]:
+                    return object.__new__(cls)
+
                 constraints = 'SIZE(MIN .. MAX)'
 
                 @classmethod
@@ -558,10 +563,8 @@ class MySqOf(asn1.SequenceOf):
                 def _uper_decode(cls, bit_stream):
                     return cls._default_uper_decode(bit_stream, MIN, MAX)
 
-                __typing__ = 'c2'
-
             self.c2Type = _c2Type
-            self.c2: self.c2Type.__typing__ = self.c2Type()
+            self.c2 = self.c2Type()
             self.attributes['c2'] = True
             self.optionals.append('c2')
 
@@ -597,8 +600,6 @@ class MySqOf(asn1.SequenceOf):
     def _uper_decode(cls, bit_stream):
         return cls._default_uper_decode(bit_stream, 1, 25)
 
-    __typing__ = 'MySqOf'
-
 
 class TypeEnumerated(asn1.Enumerated):
     class Value(asn1.Enumerated.Value):
@@ -624,13 +625,10 @@ class TypeEnumerated(asn1.Enumerated):
     def _uper_decode(cls, bit_stream):
         return cls._default_uper_decode(bit_stream)
 
-    __typing__ = 'TypeEnumerated'
-
 
 class My2ndEnumerated(TypeEnumerated):
-    pass
-
-    __typing__ = 'My2ndEnumerated'
+    def __new__(cls, *args, **kwargs) -> typing.Union[TypeEnumerated.__typing__, TypeEnumerated]:
+        return object.__new__(cls)
 
 
 class AComplexMessage(asn1.Sequence):
@@ -640,6 +638,9 @@ class AComplexMessage(asn1.Sequence):
 
         # intVal
         class _intValType(asn1.Integer):
+            def __new__(cls, *args, **kwargs) -> typing.Union[asn1.Integer.__typing__, asn1.Integer]:
+                return object.__new__(cls)
+
             constraints = 'SIZE(0 .. 10)'
 
             @classmethod
@@ -659,14 +660,15 @@ class AComplexMessage(asn1.Sequence):
             def _uper_decode(cls, bit_stream):
                 return cls._default_uper_decode(bit_stream, 0, 10)
 
-            __typing__ = 'intVal'
-
         self.intValType = _intValType
-        self.intVal: self.intValType.__typing__ = self.intValType()
+        self.intVal = self.intValType()
         self.attributes['intVal'] = True
 
         # int2Val
         class _int2ValType(asn1.Integer):
+            def __new__(cls, *args, **kwargs) -> typing.Union[asn1.Integer.__typing__, asn1.Integer]:
+                return object.__new__(cls)
+
             constraints = 'SIZE(-10 .. 10)'
 
             @classmethod
@@ -686,35 +688,34 @@ class AComplexMessage(asn1.Sequence):
             def _uper_decode(cls, bit_stream):
                 return cls._default_uper_decode(bit_stream, -10, 10)
 
-            __typing__ = 'int2Val'
-
         self.int2ValType = _int2ValType
-        self.int2Val: self.int2ValType.__typing__ = self.int2ValType()
+        self.int2Val = self.int2ValType()
         self.attributes['int2Val'] = True
 
         # int3Val
         class _int3ValType(MyInt):
-            pass
-
-            __typing__ = 'int3Val'
+            def __new__(cls, *args, **kwargs) -> typing.Union[MyInt.__typing__, MyInt]:
+                return object.__new__(cls)
 
         self.int3ValType = _int3ValType
-        self.int3Val: self.int3ValType.__typing__ = self.int3ValType()
+        self.int3Val = self.int3ValType()
         self.attributes['int3Val'] = True
 
         # strVal
         class _strValType(MyStr):
-            pass
-
-            __typing__ = 'strVal'
+            def __new__(cls, *args, **kwargs) -> typing.Union[MyStr.__typing__, MyStr]:
+                return object.__new__(cls)
 
         self.strValType = _strValType
-        self.strVal: self.strValType.__typing__ = self.strValType()
+        self.strVal = self.strValType()
         self.attributes['strVal'] = True
 
         # intArray
         class _intArrayType(asn1.SequenceOf):
             class _ElementType(asn1.Integer):
+                def __new__(cls, *args, **kwargs) -> typing.Union[asn1.Integer.__typing__, asn1.Integer]:
+                    return object.__new__(cls)
+
                 constraints = 'SIZE(0 .. 3)'
 
                 @classmethod
@@ -755,15 +756,16 @@ class AComplexMessage(asn1.Sequence):
             def _uper_decode(cls, bit_stream):
                 return cls._default_uper_decode(bit_stream, 10, 10)
 
-            __typing__ = 'intArray'
-
         self.intArrayType = _intArrayType
-        self.intArray: self.intArrayType.__typing__ = self.intArrayType()
+        self.intArray = self.intArrayType()
         self.attributes['intArray'] = True
 
         # realArray
         class _realArrayType(asn1.SequenceOf):
             class _ElementType(asn1.Real):
+                def __new__(cls, *args, **kwargs) -> typing.Union[asn1.Real.__typing__, asn1.Real]:
+                    return object.__new__(cls)
+
                 constraints = 'SIZE(1.00000000000000010000E-001 .. 3.14000000000000010000E+000)'
 
                 @classmethod
@@ -804,15 +806,16 @@ class AComplexMessage(asn1.Sequence):
             def _uper_decode(cls, bit_stream):
                 return cls._default_uper_decode(bit_stream, 15, 15)
 
-            __typing__ = 'realArray'
-
         self.realArrayType = _realArrayType
-        self.realArray: self.realArrayType.__typing__ = self.realArrayType()
+        self.realArray = self.realArrayType()
         self.attributes['realArray'] = True
 
         # octStrArray
         class _octStrArrayType(asn1.SequenceOf):
             class _ElementType(asn1.OctetString):
+                def __new__(cls, *args, **kwargs) -> typing.Union[asn1.OctetString.__typing__, asn1.OctetString]:
+                    return object.__new__(cls)
+
                 constraints = 'SIZE(1 .. 10)'
 
                 @classmethod
@@ -853,16 +856,15 @@ class AComplexMessage(asn1.Sequence):
             def _uper_decode(cls, bit_stream):
                 return cls._default_uper_decode(bit_stream, 20, 20)
 
-            __typing__ = 'octStrArray'
-
         self.octStrArrayType = _octStrArrayType
-        self.octStrArray: self.octStrArrayType.__typing__ = self.octStrArrayType()
+        self.octStrArray = self.octStrArrayType()
         self.attributes['octStrArray'] = True
 
         # enumArray
         class _enumArrayType(asn1.SequenceOf):
             class _ElementType(TypeEnumerated):
-                pass
+                def __new__(cls, *args, **kwargs) -> typing.Union[TypeEnumerated.__typing__, TypeEnumerated]:
+                    return object.__new__(cls)
 
             __element__ = _ElementType
 
@@ -885,20 +887,17 @@ class AComplexMessage(asn1.Sequence):
             def _uper_decode(cls, bit_stream):
                 return cls._default_uper_decode(bit_stream, 12, 12)
 
-            __typing__ = 'enumArray'
-
         self.enumArrayType = _enumArrayType
-        self.enumArray: self.enumArrayType.__typing__ = self.enumArrayType()
+        self.enumArray = self.enumArrayType()
         self.attributes['enumArray'] = True
 
         # enumValue
         class _enumValueType(TypeEnumerated):
-            pass
-
-            __typing__ = 'enumValue'
+            def __new__(cls, *args, **kwargs) -> typing.Union[TypeEnumerated.__typing__, TypeEnumerated]:
+                return object.__new__(cls)
 
         self.enumValueType = _enumValueType
-        self.enumValue: self.enumValueType.__typing__ = self.enumValueType()
+        self.enumValue = self.enumValueType()
         self.attributes['enumValue'] = True
 
         # enumValue2
@@ -924,14 +923,15 @@ class AComplexMessage(asn1.Sequence):
             def _uper_decode(cls, bit_stream):
                 return cls._default_uper_decode(bit_stream)
 
-            __typing__ = 'enumValue2'
-
         self.enumValue2Type = _enumValue2Type
-        self.enumValue2: self.enumValue2Type.__typing__ = self.enumValue2Type()
+        self.enumValue2 = self.enumValue2Type()
         self.attributes['enumValue2'] = True
 
         # label
         class _labelType(asn1.OctetString):
+            def __new__(cls, *args, **kwargs) -> typing.Union[asn1.OctetString.__typing__, asn1.OctetString]:
+                return object.__new__(cls)
+
             constraints = 'SIZE(10 .. 40)'
 
             @classmethod
@@ -951,15 +951,14 @@ class AComplexMessage(asn1.Sequence):
             def _uper_decode(cls, bit_stream):
                 return cls._default_uper_decode(bit_stream, 10, 40)
 
-            __typing__ = 'label'
-
         self.labelType = _labelType
-        self.label: self.labelType.__typing__ = self.labelType()
+        self.label = self.labelType()
         self.attributes['label'] = True
 
         # bAlpha
         class _bAlphaType(asn1.Boolean):
-            pass
+            def __new__(cls, *args, **kwargs) -> typing.Union[asn1.Boolean.__typing__, asn1.Boolean]:
+                return object.__new__(cls)
 
             @classmethod
             def _uper_encode(cls, bit_stream, value):
@@ -969,15 +968,14 @@ class AComplexMessage(asn1.Sequence):
             def _uper_decode(cls, bit_stream):
                 return cls._default_uper_decode(bit_stream)
 
-            __typing__ = 'bAlpha'
-
         self.bAlphaType = _bAlphaType
-        self.bAlpha: self.bAlphaType.__typing__ = self.bAlphaType()
+        self.bAlpha = self.bAlphaType()
         self.attributes['bAlpha'] = True
 
         # bBeta
         class _bBetaType(asn1.Boolean):
-            pass
+            def __new__(cls, *args, **kwargs) -> typing.Union[asn1.Boolean.__typing__, asn1.Boolean]:
+                return object.__new__(cls)
 
             @classmethod
             def _uper_encode(cls, bit_stream, value):
@@ -987,10 +985,8 @@ class AComplexMessage(asn1.Sequence):
             def _uper_decode(cls, bit_stream):
                 return cls._default_uper_decode(bit_stream)
 
-            __typing__ = 'bBeta'
-
         self.bBetaType = _bBetaType
-        self.bBeta: self.bBetaType.__typing__ = self.bBetaType()
+        self.bBeta = self.bBetaType()
         self.attributes['bBeta'] = True
 
         self.initialized = True
@@ -1004,137 +1000,121 @@ class AComplexMessage(asn1.Sequence):
     def _uper_decode(cls, bit_stream):
         return cls._default_uper_decode(bit_stream)
 
-    __typing__ = 'AComplexMessage'
-
 
 # vMyBool
 class _vMyBoolType(MyBool):
-    pass
+    def __new__(cls, *args, **kwargs) -> typing.Union[MyBool.__typing__, MyBool]:
+        return object.__new__(cls)
 
-    __typing__ = 'vMyBool'
 
-
-vMyBool: _vMyBoolType.__typing__ = _vMyBoolType(True)
+vMyBool = _vMyBoolType(True)
 
 
 # vMyInt
 class _vMyIntType(MyInt):
-    pass
+    def __new__(cls, *args, **kwargs) -> typing.Union[MyInt.__typing__, MyInt]:
+        return object.__new__(cls)
 
-    __typing__ = 'vMyInt'
 
-
-vMyInt: _vMyIntType.__typing__ = _vMyIntType(88)
+vMyInt = _vMyIntType(88)
 
 
 # v2MyInt
 class _v2MyIntType(MyInt):
-    pass
+    def __new__(cls, *args, **kwargs) -> typing.Union[MyInt.__typing__, MyInt]:
+        return object.__new__(cls)
 
-    __typing__ = 'v2MyInt'
 
-
-v2MyInt: _v2MyIntType.__typing__ = _v2MyIntType(eval('vMyInt'))
+v2MyInt = _v2MyIntType(eval('vMyInt'))
 
 
 # vMyStr
 class _vMyStrType(MyStr):
-    pass
+    def __new__(cls, *args, **kwargs) -> typing.Union[MyStr.__typing__, MyStr]:
+        return object.__new__(cls)
 
-    __typing__ = 'vMyStr'
 
-
-vMyStr: _vMyStrType.__typing__ = _vMyStrType("AAABBC")
+vMyStr = _vMyStrType("AAABBC")
 
 
 # vMyNumStr
 class _vMyNumStrType(MyNumStr):
-    pass
+    def __new__(cls, *args, **kwargs) -> typing.Union[MyNumStr.__typing__, MyNumStr]:
+        return object.__new__(cls)
 
-    __typing__ = 'vMyNumStr'
 
-
-vMyNumStr: _vMyNumStrType.__typing__ = _vMyNumStrType("123")
+vMyNumStr = _vMyNumStrType("123")
 
 
 # vMyBit
 class _vMyBitType(MyBit):
-    pass
+    def __new__(cls, *args, **kwargs) -> typing.Union[MyBit.__typing__, MyBit]:
+        return object.__new__(cls)
 
-    __typing__ = 'vMyBit'
 
-
-vMyBit: _vMyBitType.__typing__ = _vMyBitType(bytes.fromhex('FFAC'))
+vMyBit = _vMyBitType(bytes.fromhex('FFAC'))
 
 
 # vMyOct
 class _vMyOctType(MyOct):
-    pass
+    def __new__(cls, *args, **kwargs) -> typing.Union[MyOct.__typing__, MyOct]:
+        return object.__new__(cls)
 
-    __typing__ = 'vMyOct'
 
-
-vMyOct: _vMyOctType.__typing__ = _vMyOctType(bytes.fromhex('12345678'))
+vMyOct = _vMyOctType(bytes.fromhex('12345678'))
 
 
 # vMyReal
 class _vMyRealType(MyReal):
-    pass
+    def __new__(cls, *args, **kwargs) -> typing.Union[MyReal.__typing__, MyReal]:
+        return object.__new__(cls)
 
-    __typing__ = 'vMyReal'
 
-
-vMyReal: _vMyRealType.__typing__ = _vMyRealType(1.71230000000000010000E+001)
+vMyReal = _vMyRealType(1.71230000000000010000E+001)
 
 
 # vMyIntArr
 class _vMyIntArrType(MyIntArr):
-    pass
+    def __new__(cls, *args, **kwargs) -> typing.Union[MyIntArr.__typing__, MyIntArr]:
+        return object.__new__(cls)
 
-    __typing__ = 'vMyIntArr'
 
-
-vMyIntArr: _vMyIntArrType.__typing__ = _vMyIntArrType([1, 2, 3, 1, 2, 3, 0, 1, 0, 2])
+vMyIntArr = _vMyIntArrType([1, 2, 3, 1, 2, 3, 0, 1, 0, 2])
 
 
 # vMyEnum
 class _vMyEnumType(MyEnum):
-    pass
+    def __new__(cls, *args, **kwargs) -> typing.Union[MyEnum.__typing__, MyEnum]:
+        return object.__new__(cls)
 
-    __typing__ = 'vMyEnum'
 
-
-vMyEnum: _vMyEnumType.__typing__ = _vMyEnumType(eval('alpha'))
+vMyEnum = _vMyEnumType(eval('alpha'))
 
 
 # vMyStruct
 class _vMyStructType(MyStruct):
-    pass
+    def __new__(cls, *args, **kwargs) -> typing.Union[MyStruct.__typing__, MyStruct]:
+        return object.__new__(cls)
 
-    __typing__ = 'vMyStruct'
 
-
-vMyStruct: _vMyStructType.__typing__ = _vMyStructType(dict(a=2, c=eval('alpha')))
+vMyStruct = _vMyStructType(dict(a=2, c=eval('alpha')))
 
 
 # vMyMyStruct
 class _vMyMyStructType(MyStructArr):
-    pass
+    def __new__(cls, *args, **kwargs) -> typing.Union[MyStructArr.__typing__, MyStructArr]:
+        return object.__new__(cls)
 
-    __typing__ = 'vMyMyStruct'
 
-
-vMyMyStruct: _vMyMyStructType.__typing__ = _vMyMyStructType([dict(a=4, c=eval('beta')), dict(a=10, c=eval('gamma'), b=7.88999999999999970000E+000)])
+vMyMyStruct = _vMyMyStructType([dict(a=4, c=eval('beta')), dict(a=10, c=eval('gamma'), b=7.88999999999999970000E+000)])
 
 
 # vMyChoice
 class _vMyChoiceType(MyChoice):
-    pass
+    def __new__(cls, *args, **kwargs) -> typing.Union[MyChoice.__typing__, MyChoice]:
+        return object.__new__(cls)
 
-    __typing__ = 'vMyChoice'
 
-
-vMyChoice: _vMyChoiceType.__typing__ = _vMyChoiceType(choice=dict(name='alpha', value=dict(a=2, b=1.23234000000000000000E+002, c=eval('alpha'))))
-
+vMyChoice = _vMyChoiceType(choice=dict(name='alpha', value=dict(a=2, b=1.23234000000000000000E+002, c=eval('alpha'))))
 
 # End

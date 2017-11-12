@@ -6,6 +6,7 @@ RootXml(arrsFiles) ::= <<
 # ASN.1 Data model
 
 import asn1
+import typing
 
 MAX = asn1.INT_MAX
 MIN = asn1.INT_MIN
@@ -46,8 +47,6 @@ ImportedMod(sName, sCName, arrsTypes, arrsVars) ::= ""
 TasXml(sName, nLine, nPos, sType, sCName, sAssigOp, sContract) ::= <<
 class $sName$$sType$
 
-    __typing__ = '$sName$'
-
 
 >>
 
@@ -55,10 +54,8 @@ VasXml(sName, nLine, nPos, sType, sValue, sCName) ::= <<
 # $sName$
 class _$sName$Type$sType$
 
-    __typing__ = '$sName$'
 
-
-$sName$: _$sName$Type.__typing__ = _$sName$Type($sValue$)
+$sName$ = _$sName$Type($sValue$)
 
 
 >>
@@ -67,8 +64,15 @@ TypeGeneric(nLine, nPos, sSubType) ::= <<
 $sSubType$
 >>
 
+Typing(sType) ::= <<
+def __new__(cls, *args, **kwargs) -> typing.Union[$sType$.__typing__, $sType$]:
+    return object.__new__(cls)
+>>
+
 MinMaxType(sName, sMin, sMax, bFixedSize) ::= <<
-(asn1.$sName$):
+($sName$):
+    $Typing(sName)$
+
 $if(bFixedSize)$
     constraints = 'SIZE($sMin$)'
 $else$
@@ -94,7 +98,9 @@ $endif$
 >>
 
 MinMaxType2(sName, sMin, sMax, bFixedSize) ::= <<
-(asn1.$sName$):
+($sName$):
+    $Typing(sName)$
+
 $if(bFixedSize)$
     constraints = 'SIZE($sMin$)'
 $else$
@@ -140,7 +146,7 @@ $endif$
 
 BooleanType() ::= <<
 (asn1.Boolean):
-    pass
+    $Typing("asn1.Boolean")$
 
     $Encoding()$
 >>
@@ -150,13 +156,13 @@ NullType() ::= <<
     pass
 >>
 
-IntegerType() ::= "Integer"
-RealType() ::= "Real"
+IntegerType() ::= "asn1.Integer"
+RealType() ::= "asn1.Real"
 
-BitStringType() ::= "BitString"
-OctetStringType() ::= "OctetString"
-IA5StringType() ::= "IA5String"
-NumericStringType() ::= "NumericString"
+BitStringType() ::= "asn1.BitString"
+OctetStringType() ::= "asn1.OctetString"
+IA5StringType() ::= "asn1.IA5String"
+NumericStringType() ::= "asn1.NumericString"
 
 AssigOpNormalType () ::= "="
 AssigOpSpecialType () ::= "::"
@@ -185,10 +191,8 @@ ChoiceChild(sName, sCName, nLine, nPos, sChildContent, sNamePresent ) ::= <<
 # $sName$
 class _$sName$Type$sChildContent$
 
-    __typing__ = '$sName$'
-
 self.$sName$Type = _$sName$Type
-self.$sName$: self.$sName$Type.__typing__ = self.$sName$Type()
+self.$sName$ = self.$sName$Type()
 self.attributes['$sName$'] = False
 
 >>
@@ -209,10 +213,8 @@ SequenceChild(sName, sCName, bOptional, sDefVal, nLine, nPos, sChildContent ) ::
 # $sName$
 class _$sName$Type$sChildContent$
 
-    __typing__ = '$sName$'
-
 self.$sName$Type = _$sName$Type
-self.$sName$: self.$sName$Type.__typing__ = self.$sName$Type()
+self.$sName$ = self.$sName$Type()
 self.attributes['$sName$'] = True
 $if(bOptional)$
 self.optionals.append('$sName$')
@@ -260,12 +262,12 @@ class _ElementType$sChild$
 
 RefTypeMinMax(sMin, sMax, sName, sModName, sCName, sCModName) ::= <<
 ($sName$):
-    pass
+    $Typing(sName)$
 >>
 
 RefType(sName, sModName, sCName, sCModName) ::= <<
 ($sName$):
-    pass
+    $Typing(sName)$
 >>
 
 Contract(sTypePattern, sExpr) ::= ""

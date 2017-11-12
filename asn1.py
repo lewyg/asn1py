@@ -1,5 +1,4 @@
 import sys
-import typing
 from enum import Enum
 
 WORD_SIZE = 8
@@ -40,11 +39,11 @@ class bitarray:
         if isinstance(source, int) and source > 0:
             self._init_from_size(source)
 
-        elif self.__iterable_bits(source):
-            self._init_from_iterable(source)
-
         elif isinstance(source, bytearray) or isinstance(source, bytes):
             self._init_from_bytes(source)
+
+        elif self.__iterable_bits(source):
+            self._init_from_iterable(source)
 
     def _init_from_size(self, size):
         self._data = bytearray(get_byte_length_from_bit_length(size))
@@ -110,11 +109,15 @@ class bitarray:
         self._bitsize -= 1
 
     def __add__(self, other):
-        if self.__iterable_bits(other):
-            self.__append_bits(other)
+        if is_bit(other):
+            self.append_bit(int(other))
 
-        elif is_bit(other):
-            self.append(int(other))
+        elif isinstance(other, bytes):
+            for byte in other:
+                self.append_byte(byte)
+
+        elif self.__iterable_bits(other):
+            self.__append_bits(other)
 
         else:
             raise TypeError("Can't add '{}' to bitarray implicitly".format(other))
@@ -154,6 +157,9 @@ class bitarray:
         raise AttributeError("'bitarray' object has no attribute '{}'".format(item))
 
     def append(self, bit):
+        self.append_bit(bit)
+
+    def append_bit(self, bit):
         self.__assert_bit(bit)
 
         if self._bitsize % WORD_SIZE:
@@ -184,7 +190,7 @@ class bitarray:
         self.__assert_correct_index(index)
         self.__assert_bit(value)
 
-        self.append(0)
+        self.append_bit(0)
 
         for i in range(self._bitsize - 1, index, -1):
             self[i] = self[i - 1]
@@ -239,7 +245,7 @@ class bitarray:
 
     def __append_bits(self, bit_iterable):
         for c in bit_iterable:
-            self.append(int(c))
+            self.append_bit(int(c))
 
     @staticmethod
     def __iterable_bits(source):
@@ -324,7 +330,7 @@ class BitStream:
     # append functions
 
     def append_bit(self, bit):
-        self._buffer.append(bit)
+        self._buffer.append_bit(bit)
         self._increment_bit_counter()
 
     def append_bit_one(self):
@@ -670,6 +676,9 @@ class ASN1Type:
             if isinstance(self, ASN1SimpleType):
                 expected_type = self.__simple__
 
+                if isinstance(self, Enumerated):
+                    expected_type = ', '.join(['{}({})'.format(e.name, e.value) for e in self.Value][1:])
+
             elif isinstance(self, ASN1ArrayOfType):
                 value = '{} elements'.format(len(value))
                 expected_type = 'list of {}'.format(self.__element__)
@@ -845,89 +854,42 @@ class ASN1ComposedType(ASN1Type):
         return str({attr: str(getattr(self, attr)) for attr in self.attributes if self.attributes[attr]})
 
 
-class StringWrapper:
-    __wrapped__ = None
-    __setter__ = None
-
-    def __init__(self, *args):
-        self.object = self.__wrapped__(*args)
-        self.__wrap_methods()
-
-    def append(self, item):
-        self.__setter__(self.object + item)
-
-    def insert(self, index, item):
-        self.__setter__(self.object[:index] + item + self.object[index:])
-
-    def remove(self, index=None):
-        index = index or len(self.object)
-        self.__setter__(self.object[:index] + self.object[index + 1:])
-
-    def replace(self, key, value):
-        self[key] = value
-
-    def __setitem__(self, key, value):
-        if key <= len(self.object):
-            if hasattr(self.object, '__setitem__'):
-                self.object[key] = value
-
-            else:
-                self.__setter__(self.object[:key] + value + self.object[key + 1:])
-        else:
-            raise AttributeError("Item {} doesn't exist!".format(key))
-
-    def __getattr__(self, item):
-        return getattr(self.object, item)
-
-    def __eq__(self, other):
-        if isinstance(other, StringWrapper):
-            other = other.object
-
-        return self.object == other
-
-    def __add__(self, other):
-        if isinstance(other, StringWrapper):
-            other = other.object
-
-        return self.object + other
-
-    def __wrap_methods(self):
-        def make_proxy(attribute):
-            def proxy(obj):
-                return getattr(obj.object, attribute)
-
-            return proxy
-
-        ignore = {
-            '__new__', '__mro__', '__class__', '__init__', '__getattribute__', '__dict__', '__getattr__',
-            '__eq__', '__add__', '__ne__'
-        }
-        for name in dir(self.__wrapped__):
-            if name.startswith("__") and name not in ignore:
-                setattr(self.__class__, name, property(make_proxy(name)))
-
-
 class ASN1StringWrappedType(ASN1SimpleType):
     @staticmethod
-    def _string_wrapper(wrapped, setter):
-        class Wrapper(StringWrapper):
-            __wrapped__ = wrapped
+    def _wrap_string(wrapped, setter):
+        class _StringWrapper(wrapped):
             __setter__ = setter
 
-        return Wrapper
+            def __init__(self, *args, **kwargs):
+                if wrapped != str:
+                    super().__init__(*args, **kwargs)
+                self._wrap_methods()
 
-    def get(self):
-        return self._value
+            def _mutable_proxy(self, method):
+                def proxy(*args, **kwargs):
+                    method(*args, **kwargs)
+                    self.__setter__(self)
 
-    @classmethod
-    def _check_type(cls, value):
-        return super()._check_type(value) or (isinstance(value, StringWrapper) and value.__wrapped__ == cls.__simple__)
+                return proxy
+
+            def _wrap_methods(self):
+                mutable_methods = [
+                    'append', 'clear', 'extend', 'insert', 'lstrip', 'pop', 'remove', 'rstrip', 'strip', '__setitem__'
+                ]
+
+                for method_name in mutable_methods:
+                    if hasattr(self, method_name):
+                        method = getattr(self, method_name)
+                        setattr(self, method_name, self._mutable_proxy(method))
+
+        return _StringWrapper
 
     def _set_value(self, value):
-        self._value = self._string_wrapper(self.__simple__, self.set)(value)
+        self._value = self._wrap_string(self.__simple__, self.set)(value)
 
 
 class ASN1ArrayOfType(ASN1Type):
+    __typing__ = 'ASN1ArrayOfType'
     __element__ = ASN1SimpleType
 
     def __init__(self, source=None):
@@ -1047,6 +1009,9 @@ class Enumerated(ASN1SimpleType):
 
     __simple__ = Value
 
+    value = property(lambda self: self._value.value)
+    name = property(lambda self: self._value.name)
+
     @classmethod
     def init_value(cls):
         enum_values = cls._get_values_except_none()
@@ -1102,7 +1067,7 @@ class Null(ASN1SimpleType):
 
 class Integer(ASN1SimpleType):
     __simple__ = int
-    __typing__ = __simple__
+    __typing__ = int
 
     @classmethod
     def _default_uper_encode(cls, bit_stream: BitStream, value, min_val=None, max_val=None):
@@ -1128,7 +1093,7 @@ class Integer(ASN1SimpleType):
 
 class Real(ASN1SimpleType):
     __simple__ = float
-    __typing__ = __simple__
+    __typing__ = float
 
     @classmethod
     def _check_type(cls, value):
@@ -1148,7 +1113,7 @@ class Real(ASN1SimpleType):
 
 class Boolean(ASN1SimpleType):
     __simple__ = bool
-    __typing__ = __simple__
+    __typing__ = bool
 
     @classmethod
     def _check_type(cls, value):
@@ -1168,7 +1133,7 @@ class Boolean(ASN1SimpleType):
 
 class BitString(ASN1StringWrappedType):
     __simple__ = bitarray
-    __typing__ = typing.Union['BitString', StringWrapper, __simple__]
+    __typing__ = bitarray
 
     def set(self, value):
         if isinstance(value, bytes) or isinstance(value, bytearray):
@@ -1197,7 +1162,7 @@ class BitString(ASN1StringWrappedType):
 
 class OctetString(ASN1StringWrappedType):
     __simple__ = bytearray
-    __typing__ = typing.Union['OctetString', StringWrapper, __simple__]
+    __typing__ = bytearray
 
     @classmethod
     def _check_type(cls, value):
@@ -1226,7 +1191,7 @@ class OctetString(ASN1StringWrappedType):
 
 class IA5String(ASN1StringWrappedType):
     __simple__ = str
-    __typing__ = typing.Union['IA5String', StringWrapper, __simple__]
+    __typing__ = str
 
     @classmethod
     def _default_uper_encode(cls, bit_stream: BitStream, value, min_size, max_size):
@@ -1251,7 +1216,7 @@ class IA5String(ASN1StringWrappedType):
 
 class NumericString(ASN1StringWrappedType):
     __simple__ = str
-    __typing__ = typing.Union['NumericString', StringWrapper, __simple__]
+    __typing__ = str
 
     @classmethod
     def _check_type(cls, value):
