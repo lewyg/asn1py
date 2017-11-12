@@ -1,4 +1,5 @@
 import sys
+import typing
 from enum import Enum
 
 WORD_SIZE = 8
@@ -723,6 +724,9 @@ class ASN1Type:
         if isinstance(value, cls):
             value = value.get()
 
+        if not cls._is_correct_value(value):
+            raise Exception("{} can't encode {}".format(cls.__name__, value))
+
         if encoding == 'acn':
             cls._acn_encode(bit_stream, value)
         else:
@@ -737,11 +741,16 @@ class ASN1Type:
         pass
 
     @classmethod
-    def decode(cls, bit_stream: BitStream, encoding=None):
+    def decode(cls, bit_stream: BitStream, encoding=None) -> typing.Any:
         if encoding == 'acn':
-            return cls._acn_decode(bit_stream)
+            value = cls._acn_decode(bit_stream)
         else:
-            return cls._uper_decode(bit_stream)
+            value = cls._uper_decode(bit_stream)
+
+        if not cls._is_correct_value(value):
+            raise Exception("{} can't decode {}".format(cls.__name__, value))
+
+        return value
 
     @classmethod
     def _acn_decode(cls, bit_stream: BitStream):

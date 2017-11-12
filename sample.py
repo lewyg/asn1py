@@ -1117,4 +1117,5 @@ class _vMyChoiceType(MyChoice):
 
 vMyChoice = _vMyChoiceType(choice=dict(name='alpha', value=dict(a=2, b=1.23234000000000000000E+002, c=eval('alpha'))))
 
+
 # End
