@@ -659,7 +659,7 @@ class BitStream:
 
 
 class ASN1Type:
-    __typing__ = 'ASN1Type'
+    __typing__ = ''
 
     constraints = ''
 
@@ -1017,9 +1017,7 @@ class Enumerated(ASN1SimpleType):
             return self.value == other
 
     __simple__ = Value
-
-    value = property(lambda self: self._value.value)
-    name = property(lambda self: self._value.name)
+    __typing__ = Value
 
     @classmethod
     def init_value(cls):

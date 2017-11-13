@@ -64,15 +64,8 @@ TypeGeneric(nLine, nPos, sSubType) ::= <<
 $sSubType$
 >>
 
-Typing(sType) ::= <<
-def __new__(cls, *args, **kwargs) -> typing.Union[$sType$.__typing__, $sType$]:
-    return object.__new__(cls)
->>
-
 MinMaxType(sName, sMin, sMax, bFixedSize) ::= <<
 ($sName$):
-    $Typing(sName)$
-
 $if(bFixedSize)$
     constraints = 'SIZE($sMin$)'
 $else$
@@ -99,8 +92,6 @@ $endif$
 
 MinMaxType2(sName, sMin, sMax, bFixedSize) ::= <<
 ($sName$):
-    $Typing(sName)$
-
 $if(bFixedSize)$
     constraints = 'SIZE($sMin$)'
 $else$
@@ -146,8 +137,6 @@ $endif$
 
 BooleanType() ::= <<
 (asn1.Boolean):
-    $Typing("asn1.Boolean")$
-
     $Encoding()$
 >>
 
@@ -192,7 +181,7 @@ ChoiceChild(sName, sCName, nLine, nPos, sChildContent, sNamePresent ) ::= <<
 class _$sName$Type$sChildContent$
 
 self.$sName$Type = _$sName$Type
-self.$sName$ = self.$sName$Type()
+self.$sName$: _$sName$Type.__typing__ = self.$sName$Type()
 self.attributes['$sName$'] = False
 
 >>
@@ -214,7 +203,7 @@ SequenceChild(sName, sCName, bOptional, sDefVal, nLine, nPos, sChildContent ) ::
 class _$sName$Type$sChildContent$
 
 self.$sName$Type = _$sName$Type
-self.$sName$ = self.$sName$Type()
+self.$sName$: _$sName$Type.__typing__ = self.$sName$Type()
 self.attributes['$sName$'] = True
 $if(bOptional)$
 self.optionals.append('$sName$')
@@ -262,12 +251,12 @@ class _ElementType$sChild$
 
 RefTypeMinMax(sMin, sMax, sName, sModName, sCName, sCModName) ::= <<
 ($sName$):
-    $Typing(sName)$
+    pass
 >>
 
 RefType(sName, sModName, sCName, sCModName) ::= <<
 ($sName$):
-    $Typing(sName)$
+    pass
 >>
 
 Contract(sTypePattern, sExpr) ::= ""
