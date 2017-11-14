@@ -761,7 +761,10 @@ class ASN1Type:
         return 0
 
 
-class ASN1SimpleType(ASN1Type):
+T = typing.TypeVar('T')
+
+
+class ASN1SimpleType(ASN1Type, typing.Generic[T]):
     __simple__ = object
 
     def __init__(self, source=None):
@@ -771,7 +774,7 @@ class ASN1SimpleType(ASN1Type):
     def init_value(cls):
         return cls.__simple__()
 
-    def get(self):
+    def get(self) -> T:
         return self._value
 
     @classmethod
@@ -863,7 +866,7 @@ class ASN1ComposedType(ASN1Type):
         return str({attr: str(getattr(self, attr)) for attr in self.attributes if self.attributes[attr]})
 
 
-class ASN1StringWrappedType(ASN1SimpleType):
+class ASN1StringWrappedType(ASN1SimpleType, typing.Generic[T]):
     @staticmethod
     def _wrap_string(wrapped, setter):
         class _StringWrapper(wrapped):
@@ -897,7 +900,7 @@ class ASN1StringWrappedType(ASN1SimpleType):
         self._value = self._wrap_string(self.__simple__, self.set)(value)
 
 
-class ASN1ArrayOfType(ASN1Type):
+class ASN1ArrayOfType(ASN1Type, typing.Generic[T]):
     __typing__ = 'ASN1ArrayOfType'
     __element__ = ASN1SimpleType
 
@@ -923,7 +926,7 @@ class ASN1ArrayOfType(ASN1Type):
 
         return element_list
 
-    def get(self):
+    def get(self) -> typing.List[T]:
         return self._list
 
     @classmethod
@@ -951,7 +954,7 @@ class ASN1ArrayOfType(ASN1Type):
     def replace(self, key, value):
         self[key] = value
 
-    def __getitem__(self, item):
+    def __getitem__(self, item) -> T:
         if self._check_index(item):
             return self._list[item].get()
 
@@ -971,12 +974,12 @@ class ASN1ArrayOfType(ASN1Type):
     def __len__(self):
         return len(self._list)
 
-    def __iter__(self):
+    def __iter__(self) -> typing.Iterable[T]:
         self._n = 0
 
         return self
 
-    def __next__(self):
+    def __next__(self) -> T:
         if self._n < len(self._list):
             element = self._list[self._n]
             self._n += 1
@@ -1004,7 +1007,7 @@ class ASN1ArrayOfType(ASN1Type):
         return str([str(elem) for elem in self._list])
 
 
-class Enumerated(ASN1SimpleType):
+class Enumerated(ASN1SimpleType['Enumerated.Value']):
     class Value(Enum):
         # NONE = None
 
@@ -1017,9 +1020,10 @@ class Enumerated(ASN1SimpleType):
             return self.value == other
 
     __simple__ = Value
+    __typing__ = Value
 
-    value = property(lambda self: self._value.value)
-    name = property(lambda self: self._value.name)
+    # value = property(lambda self: self._value.value)
+    # name = property(lambda self: self._value.name)
 
     @classmethod
     def init_value(cls):
@@ -1060,7 +1064,7 @@ class Enumerated(ASN1SimpleType):
         return [e.value for e in cls.Value][1:]
 
 
-class Null(ASN1SimpleType):
+class Null(ASN1SimpleType[None]):
     def __init__(self):
         super().__init__(None)
         self._value = None
@@ -1074,7 +1078,7 @@ class Null(ASN1SimpleType):
             raise ConstraintException(type(self).__name__, value, "Null can't be set", None)
 
 
-class Integer(ASN1SimpleType):
+class Integer(ASN1SimpleType[int]):
     __simple__ = int
     __typing__ = int
 
@@ -1100,7 +1104,7 @@ class Integer(ASN1SimpleType):
             return bit_stream.decode_number()
 
 
-class Real(ASN1SimpleType):
+class Real(ASN1SimpleType[float]):
     __simple__ = float
     __typing__ = float
 
@@ -1120,7 +1124,7 @@ class Real(ASN1SimpleType):
         return bit_stream.decode_real()
 
 
-class Boolean(ASN1SimpleType):
+class Boolean(ASN1SimpleType[bool]):
     __simple__ = bool
     __typing__ = bool
 
@@ -1140,7 +1144,7 @@ class Boolean(ASN1SimpleType):
         return bool(bit_stream.read_bit())
 
 
-class BitString(ASN1StringWrappedType):
+class BitString(ASN1StringWrappedType[bitarray]):
     __simple__ = bitarray
     __typing__ = bitarray
 
@@ -1169,7 +1173,7 @@ class BitString(ASN1StringWrappedType):
         return bit_stream.read_bits(min_size)
 
 
-class OctetString(ASN1StringWrappedType):
+class OctetString(ASN1StringWrappedType[bytearray]):
     __simple__ = bytearray
     __typing__ = bytearray
 
@@ -1198,7 +1202,7 @@ class OctetString(ASN1StringWrappedType):
         return result
 
 
-class IA5String(ASN1StringWrappedType):
+class IA5String(ASN1StringWrappedType[str]):
     __simple__ = str
     __typing__ = str
 
@@ -1223,7 +1227,7 @@ class IA5String(ASN1StringWrappedType):
         return result
 
 
-class NumericString(ASN1StringWrappedType):
+class NumericString(ASN1StringWrappedType[str]):
     __simple__ = str
     __typing__ = str
 
@@ -1351,7 +1355,7 @@ class Choice(ASN1ComposedType):
         return result
 
 
-class SequenceOf(ASN1ArrayOfType):
+class SequenceOf(ASN1ArrayOfType, typing.Generic[T]):
     @classmethod
     def _default_uper_encode(cls, bit_stream: BitStream, value, min_size, max_size):
         if min_size != max_size:
@@ -1374,5 +1378,5 @@ class SequenceOf(ASN1ArrayOfType):
         return result
 
 
-class SetOf(SequenceOf):
+class SetOf(SequenceOf, typing.Generic[T]):
     pass
