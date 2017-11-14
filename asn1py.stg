@@ -55,7 +55,7 @@ VasXml(sName, nLine, nPos, sType, sValue, sCName) ::= <<
 class _$sName$Type$sType$
 
 
-$sName$ = _$sName$Type($sValue$)
+$sName$: _$sName$Type.__typing__ = _$sName$Type($sValue$)
 
 
 >>
