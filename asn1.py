@@ -299,6 +299,14 @@ def get_signed_int_byte_length(value: int):
     return get_byte_length_from_bit_length(bit_length) or 1
 
 
+def int_to_uint(value):
+    return value
+
+
+def uint_to_int(value, uint_size_in_bytes=4):
+    return value - (value >> (uint_size_in_bytes * WORD_SIZE) - 1) * (1 << (uint_size_in_bytes * WORD_SIZE))
+
+
 #############################
 #    Encoding / Decoding    #
 #############################
@@ -328,7 +336,24 @@ class BitStream:
             self._current_bit = 0
             self._current_byte += 1
 
-    # append functions
+    def _align_to_next_byte(self):
+        self.append_bits_zero(self._current_bit & WORD_SIZE)
+
+    def _align_to_next_word(self):
+        self.__align_to_n_bytes(2)
+
+    def _align_to_next_dword(self):
+        self.__align_to_n_bytes(4)
+
+    def __align_to_n_bytes(self, n_bytes):
+        self._align_to_next_byte()
+        while self._current_byte % n_bytes:
+            self.append_byte_one()
+
+    def _require_reverse(self):
+        return sys.byteorder == 'little'
+
+    # append methods
 
     def append_bit(self, bit):
         self._buffer.append_bit(bit)
@@ -414,6 +439,10 @@ class BitStream:
             byte |= bit << (WORD_SIZE - i - 1)
 
         return byte
+
+    ############
+    #   uPER   #
+    ############
 
     # encoding
 
@@ -651,6 +680,173 @@ class BitStream:
             value = -value
 
         return value
+
+    ############
+    #   uPER   #
+    ############
+
+    # encoding
+
+    def acn_encode_positive_integer_const_size(self, value, encoded_size_in_bits):
+        if encoded_size_in_bits == 0:
+            return
+
+        n_bits = value.bit_length()
+        self.append_bits_zero(encoded_size_in_bits - n_bits)
+        self.encode_non_negative_integer(value)
+
+    def acn_encode_positive_integer_const_size_byte(self, value, n_bytes, byteorder):
+        if byteorder == 'little':
+            self._acn_encode_positive_integer_const_size_little_endian(value, n_bytes)
+        elif byteorder == 'big':
+            self._acn_encode_positive_integer_const_size_big_endian(value, n_bytes)
+
+    def _acn_encode_positive_integer_const_size_big_endian(self, value, n_bytes):
+        mask = 0xFF << ((n_bytes - 1) * WORD_SIZE)
+        for i in range(n_bytes):
+            byte = (value & mask) >> ((n_bytes - i - 1) * WORD_SIZE)
+            self.append_byte(byte)
+            mask >>= WORD_SIZE
+
+    def _acn_encode_positive_integer_const_size_little_endian(self, value, n_bytes):
+        for i in range(n_bytes):
+            byte = value & 0xFF
+            self.append_byte(byte)
+            value >>= WORD_SIZE
+
+    def acn_encode_positive_integer_const_size_8(self, value):
+        self.append_byte(value & 0xFF)
+
+    def acn_encode_positive_integer_const_size_16(self, value, byteorder):
+        self.acn_encode_positive_integer_const_size_byte(value, 2, byteorder)
+
+    def acn_encode_positive_integer_const_size_32(self, value, byteorder):
+        self.acn_encode_positive_integer_const_size_byte(value, 4, byteorder)
+
+    def acn_encode_positive_integer_const_size_64(self, value, byteorder):
+        self.acn_encode_positive_integer_const_size_byte(value, 8, byteorder)
+
+    def _acn_encode_unsigned_integer(self, value, n_bytes):
+        int_size = 8
+        assert n_bytes <= int_size
+
+        max_byte_mask = 0xFF00000000000000
+
+        value <<= ((int_size - n_bytes) * WORD_SIZE)
+        for i in range(n_bytes):
+            byte = (value & max_byte_mask) >> ((int_size - 1) * WORD_SIZE)
+            self.append_byte(byte)
+            value <<= WORD_SIZE
+
+    def acn_encode_positive_integer_var_size_length_embedded(self, value):
+        n_bytes = get_byte_length_from_bit_length(value.bit_length())
+
+        self.append_byte(n_bytes)
+        self._acn_encode_unsigned_integer(value, n_bytes)
+
+    def acn_encode_integer_twos_complement_const_size(self, value, encoded_size_in_bits):
+        if value >= 0:
+            self.append_bits_zero(encoded_size_in_bits - value.bit_length())
+            self.encode_non_negative_integer(value)
+
+        else:
+            self.append_bits_one(encoded_size_in_bits - (-value).bit_length())
+            self.encode_non_negative_integer(-value - 1, True)
+
+    def acn_encode_integer_twos_complement_const_size_8(self, value):
+        self.acn_encode_positive_integer_const_size_8(value)
+
+    def acn_encode_integer_twos_complement_const_size_16(self, value, byteorder):
+        self.acn_encode_positive_integer_const_size_16(value, byteorder)
+
+    def acn_encode_integer_twos_complement_const_size_32(self, value, byteorder):
+        self.acn_encode_positive_integer_const_size_32(value, byteorder)
+
+    def acn_encode_integer_twos_complement_const_size_64(self, value, byteorder):
+        self.acn_encode_positive_integer_const_size_64(value, byteorder)
+
+    # decoding
+
+    def acn_decode_positive_integer_const_size(self, encoded_size_in_bits):
+        return self.decode_non_negative_integer(encoded_size_in_bits)
+
+    def acn_decode_positive_integer_const_size_byte(self, n_bytes, byteorder):
+        if byteorder == 'little':
+            return self._acn_decode_positive_integer_const_size_little_endian(n_bytes)
+        elif byteorder == 'big':
+            return self._acn_decode_positive_integer_const_size_big_endian(n_bytes)
+
+    def _acn_decode_positive_integer_const_size_big_endian(self, n_bytes):
+        value = 0
+        for i in range(n_bytes):
+            byte = self.read_byte()
+            value <<= WORD_SIZE
+            value |= byte
+
+        return value
+
+    def _acn_decode_positive_integer_const_size_little_endian(self, n_bytes):
+        value = 0
+        for i in range(n_bytes):
+            byte = self.read_byte()
+            byte <<= (i * WORD_SIZE)
+            value |= byte
+
+        return value
+
+    def acn_decode_positive_integer_const_size_8(self):
+        return self.read_byte()
+
+    def acn_decode_positive_integer_const_size_16(self, byteorder):
+        return self.acn_decode_positive_integer_const_size_byte(2, byteorder)
+
+    def acn_decode_positive_integer_const_size_32(self, byteorder):
+        return self.acn_decode_positive_integer_const_size_byte(4, byteorder)
+
+    def acn_decode_positive_integer_const_size_64(self, byteorder):
+        return self.acn_decode_positive_integer_const_size_byte(8, byteorder)
+
+    def acn_decode_positive_integer_var_size_length_embedded(self):
+        n_bytes = self.read_byte()
+        value = 0
+
+        for i in range(n_bytes):
+            byte = self.read_byte()
+            value <<= WORD_SIZE
+            value |= byte
+
+        return value
+
+    def acn_decode_integer_twos_complement_const_size(self, encoded_size_in_bits):
+        value = 0
+        n_bytes = encoded_size_in_bits / WORD_SIZE
+        rest_bits = encoded_size_in_bits % WORD_SIZE
+
+        for i in range(n_bytes):
+            byte = self.read_byte()
+            if i == 0 and byte > 127:
+                value = -1
+
+            value <<= WORD_SIZE
+            value |= byte
+
+        if rest_bits:
+            value <<= rest_bits
+            value |= self.read_partial_byte(rest_bits) >> (WORD_SIZE - rest_bits)
+
+        return value
+
+    def acn_decode_integer_twos_complement_const_size_8(self, ):
+        return uint_to_int(self.acn_decode_positive_integer_const_size_8(), 1)
+
+    def acn_decode_integer_twos_complement_const_size_16(self, byteorder):
+        return uint_to_int(self.acn_decode_positive_integer_const_size_16(byteorder), 2)
+
+    def acn_decode_integer_twos_complement_const_size_32(self, byteorder):
+        return uint_to_int(self.acn_decode_positive_integer_const_size_32(byteorder), 4)
+
+    def acn_decode_integer_twos_complement_const_size_64(self, byteorder):
+        return uint_to_int(self.acn_decode_positive_integer_const_size_64(byteorder), 8)
 
 
 #############################
