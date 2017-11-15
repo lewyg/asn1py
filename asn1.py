@@ -440,6 +440,23 @@ class BitStream:
 
         return byte
 
+    def read_bit_pattern(self, pattern, n_bits):
+        value = True
+        n_bytes = n_bits / WORD_SIZE
+        rest_bits = n_bits % WORD_SIZE
+
+        for i in range(n_bytes):
+            byte = self.read_byte()
+            if byte != pattern[i]:
+                value = False
+
+        if rest_bits:
+            byte = self.read_partial_byte(rest_bits)
+            if byte != pattern[n_bytes] >> (WORD_SIZE - rest_bits):
+                value = False
+
+        return value
+
     ############
     #   uPER   #
     ############
@@ -685,6 +702,21 @@ class BitStream:
     #   uPER   #
     ############
 
+    def acn_get_integer_size_bcd(self, value):
+        result = 0
+
+        while value > 0:
+            value /= 10
+            result += 1
+
+        return result
+
+    def acn_get_integer_size_ascii(self, value):
+        if value < 0:
+            value = -value
+
+        return self.acn_get_integer_size_bcd(value) + 1
+
     # encoding
 
     def acn_encode_positive_integer_const_size(self, value, encoded_size_in_bits):
@@ -764,6 +796,75 @@ class BitStream:
 
     def acn_encode_integer_twos_complement_const_size_64(self, value, byteorder):
         self.acn_encode_positive_integer_const_size_64(value, byteorder)
+
+    def acn_encode_integer_twos_complement_var_size(self, value):
+        self.acn_encode_positive_integer_var_size_length_embedded(value)
+
+    def acn_encode_integer_bcd_const_size(self, value, encoded_size_in_nibbles):
+        assert encoded_size_in_nibbles <= 100
+
+        digits = list()
+        while value > 0:
+            digits.append(value % 10)
+            value /= 10
+
+        assert len(digits) <= encoded_size_in_nibbles
+
+        for digit in reversed(digits):
+            self.append_partial_byte(digit & 0xF, 4)
+
+    def acn_encode_integer_bcd_var_size_length_embedded(self, value):
+        n_nibbles = self.acn_get_integer_size_bcd(value)
+        self.append_byte(n_nibbles & 0xFFFFFFFF)
+        self.acn_encode_integer_bcd_const_size(value, n_nibbles)
+
+    def acn_encode_integer_bcd_var_size_null_terminated(self, value):
+        n_nibbles = self.acn_get_integer_size_bcd(value)
+        self.acn_encode_integer_bcd_const_size(value, n_nibbles)
+        self.append_partial_byte(0xF, 4)
+
+    def acn_encode_unsigned_integer_ascii_const_size(self, value, encoded_size_in_bytes):
+        assert encoded_size_in_bytes <= 100
+
+        digits = list()
+        while value > 0:
+            digits.append(value % 10)
+            value /= 10
+
+        assert len(digits) <= encoded_size_in_bytes
+
+        for digit in reversed(digits):
+            self.append_byte(digit + ord('0'))
+
+    def acn_encode_signed_integer_ascii_const_size(self, value, encoded_size_in_bytes):
+        if value < 0:
+            value = -value
+            sign = '-'
+        else:
+            sign = '+'
+
+        self.append_byte(ord(sign))
+        self.acn_encode_unsigned_integer_ascii_const_size(value, encoded_size_in_bytes - 1)
+
+    def acn_encode_unsigned_integer_ascii_var_size_length_embedded(self, value):
+        n_chars = self.acn_get_integer_size_bcd(value)
+        self.append_byte(n_chars)
+        self.acn_encode_unsigned_integer_ascii_const_size(value, n_chars)
+
+    def acn_encode_signed_integer_ascii_var_size_length_embedded(self, value):
+        n_chars = self.acn_get_integer_size_bcd(value)
+        self.append_byte(n_chars)
+        self.acn_encode_signed_integer_ascii_const_size(value, n_chars)
+
+    def acn_encode_unsigned_integer_ascii_var_size_null_terminated(self, value):
+        n_chars = self.acn_get_integer_size_bcd(value)
+        self.acn_encode_unsigned_integer_ascii_const_size(value, n_chars)
+        self.append_byte(0)
+
+    def acn_encode_signed_integer_ascii_var_size_null_terminated(self, value):
+        n_chars = self.acn_get_integer_size_bcd(value)
+        self.acn_encode_signed_integer_ascii_const_size(value, n_chars)
+        self.append_byte(0)
 
     # decoding
 
@@ -847,6 +948,96 @@ class BitStream:
 
     def acn_decode_integer_twos_complement_const_size_64(self, byteorder):
         return uint_to_int(self.acn_decode_positive_integer_const_size_64(byteorder), 8)
+
+    def acn_decode_integer_var_size_length_embedded(self):
+        n_bytes = self.read_byte()
+        value = 0
+        negate = False
+
+        for i in range(n_bytes):
+            byte = self.read_byte()
+            if i == 0 and byte > 127:
+                value = -1
+                negate = True
+
+            value <<= WORD_SIZE
+            value |= byte
+
+        if negate:
+            value = ~value
+
+        return value
+
+    def acn_decode_integer_bcd_const_size(self, encoded_size_in_nibbles):
+        result = 0
+        while encoded_size_in_nibbles > 0:
+            digit = self.read_partial_byte(4)
+            result *= 10
+            result += digit
+            encoded_size_in_nibbles -= 1
+
+        return result
+
+    def acn_decode_integer_bcd_var_size_length_embedded(self):
+        n_nibbles = self.read_byte()
+        return self.acn_decode_integer_bcd_const_size(n_nibbles)
+
+    def acn_decode_integer_bcd_var_size_null_terminated(self):
+        result = 0
+        digit = self.read_partial_byte(4)
+
+        while digit <= 9:
+            result *= 10
+            result += digit
+            digit = self.read_partial_byte(4)
+
+        return result
+
+    def acn_decode_unsigned_integer_ascii_const_size(self, encoded_size_in_bytes):
+        result = 0
+
+        for i in range(encoded_size_in_bytes):
+            digit = self.read_byte()
+            assert ord('0') <= digit <= ord('9')
+            result *= 10
+            result += int(chr(digit))
+
+        return result
+
+    def acn_decode_signed_integer_ascii_const_size(self, encoded_size_in_bytes):
+        sign = self.read_byte()
+        assert sign in [ord('+'), ord('-')]
+        sign = 1 if sign == ord('+') else -1
+        result = self.acn_decode_unsigned_integer_ascii_const_size(encoded_size_in_bytes - 1)
+
+        return sign * result
+
+    def acn_decode_unsigned_integer_ascii_var_size_length_embedded(self):
+        n_chars = self.read_byte()
+        return self.acn_decode_unsigned_integer_ascii_const_size(n_chars)
+
+    def acn_decode_signed_integer_ascii_var_size_length_embedded(self):
+        n_chars = self.read_byte()
+        return self.acn_decode_signed_integer_ascii_const_size(n_chars)
+
+    def acn_decode_unsigned_integer_ascii_var_size_null_terminated(self):
+        result = 0
+        digit = self.read_byte()
+
+        while digit:
+            result *= 10
+            result += int(chr(digit))
+            digit = self.read_byte()
+
+        return result
+
+    def acn_decode_signed_integer_ascii_var_size_null_terminated(self):
+        sign = self.read_byte()
+        assert sign in [ord('+'), ord('-')]
+        sign = 1 if sign == ord('+') else -1
+        result = self.acn_decode_unsigned_integer_ascii_var_size_null_terminated()
+
+        return sign * result
 
 
 #############################
