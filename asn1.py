@@ -295,7 +295,10 @@ def get_signed_int_byte_length(value: int):
     if value >= 0:
         bit_length = value.bit_length()
     else:
-        bit_length = int(-value - 1).bit_length()
+        bit_length = int(~value).bit_length()
+
+    if not bit_length % WORD_SIZE:
+        bit_length += 1  # one bit for mark sign
 
     return get_byte_length_from_bit_length(bit_length) or 1
 
@@ -351,7 +354,7 @@ class BitStream:
         while self._current_byte % n_bytes:
             self.append_byte_one()
 
-    def _require_reverse(self):
+    def _requires_reverse(self):
         return sys.byteorder == 'little'
 
     # append methods
@@ -404,7 +407,6 @@ class BitStream:
         for i in range(n_bits):
             bit = (byte & 0b10000000) >> (WORD_SIZE - 1)
             self.append_bit(bit)
-            self._increment_bit_counter()
             byte <<= 1
 
     # read functions
@@ -443,7 +445,7 @@ class BitStream:
 
     def read_bit_pattern(self, pattern, n_bits):
         value = True
-        n_bytes = n_bits / WORD_SIZE
+        n_bytes = n_bits // WORD_SIZE
         rest_bits = n_bits % WORD_SIZE
 
         for i in range(n_bytes):
@@ -453,7 +455,7 @@ class BitStream:
 
         if rest_bits:
             byte = self.read_partial_byte(rest_bits)
-            if byte != pattern[n_bytes] >> (WORD_SIZE - rest_bits):
+            if byte != pattern[n_bytes] & 0xFF << (WORD_SIZE - rest_bits):
                 value = False
 
         return value
@@ -489,6 +491,8 @@ class BitStream:
             self.encode_non_negative_integer32(lo, negate)
 
     def encode_constraint_number(self, value: int, min_value, max_value):
+        assert min_value <= value <= max_value
+
         range_bit_length = int(max_value - min_value).bit_length()
         value_bit_length = (value - min_value).bit_length()
         self.append_bits_zero(range_bit_length - value_bit_length)
@@ -509,8 +513,8 @@ class BitStream:
             self.append_bits_zero(value_byte_length * WORD_SIZE - value.bit_length())
             self.encode_non_negative_integer(value)
         else:
-            self.append_bits_one(value_byte_length * WORD_SIZE - (-value - 1).bit_length())
-            self.encode_non_negative_integer((-value - 1), True)
+            self.append_bits_one(value_byte_length * WORD_SIZE - (~value).bit_length())
+            self.encode_non_negative_integer((~value), True)
 
     def encode_real(self, value: float):
         """
@@ -572,7 +576,7 @@ class BitStream:
         self.encode_constraint_number(1 + exp_len + man_len, 0, 255)
         self.encode_constraint_number(header, 0, 255)
 
-        if exponent > 0:
+        if exponent >= 0:
             self.append_bits_zero(exp_len * WORD_SIZE - exponent.bit_length())
             self.encode_non_negative_integer(exponent)
         else:
@@ -705,12 +709,11 @@ class BitStream:
 
     def acn_get_integer_size_bcd(self, value):
         result = 0
-
         while value > 0:
-            value /= 10
+            value //= 10
             result += 1
 
-        return result
+        return result   # len(str(value))
 
     def acn_get_integer_size_ascii(self, value):
         if value < 0:
@@ -784,7 +787,7 @@ class BitStream:
 
         else:
             self.append_bits_one(encoded_size_in_bits - (-value).bit_length())
-            self.encode_non_negative_integer(-value - 1, True)
+            self.encode_non_negative_integer(~value, True)
 
     def acn_encode_integer_twos_complement_const_size_8(self, value):
         self.acn_encode_positive_integer_const_size_8(value)
@@ -870,7 +873,7 @@ class BitStream:
     def acn_encode_real_big_endian(self, value: float, format_type='f'):
         value_bytes = bytearray(struct.pack(format_type, value))
 
-        if self._require_reverse():
+        if self._requires_reverse():
             value_bytes = reversed(value_bytes)
 
         for byte in value_bytes:
@@ -885,7 +888,7 @@ class BitStream:
     def acn_encode_real_little_endian(self, value: float, format_type='f'):
         value_bytes = bytearray(struct.pack(format_type, value))
 
-        if not self._require_reverse():
+        if not self._requires_reverse():
             value_bytes = reversed(value_bytes)
 
         for byte in value_bytes:
@@ -1116,7 +1119,7 @@ class BitStream:
     def acn_decode_real_big_endian(self, format_type='f'):
         value_bytes = bytearray()
 
-        if self._require_reverse():
+        if self._requires_reverse():
             value_bytes = reversed(value_bytes)
 
         for _ in bytearray(struct.pack(format_type, 0.0)):
@@ -1133,7 +1136,7 @@ class BitStream:
     def acn_decode_real_little_endian(self, format_type='f'):
         value_bytes = bytearray()
 
-        if not self._require_reverse():
+        if not self._requires_reverse():
             value_bytes = reversed(value_bytes)
 
         for _ in bytearray(struct.pack(format_type, 0.0)):
