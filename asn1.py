@@ -1,3 +1,4 @@
+import struct
 import sys
 import typing
 from enum import Enum
@@ -866,6 +867,73 @@ class BitStream:
         self.acn_encode_signed_integer_ascii_const_size(value, n_chars)
         self.append_byte(0)
 
+    def acn_encode_real_big_endian(self, value: float, format_type='f'):
+        value_bytes = bytearray(struct.pack(format_type, value))
+
+        if self._require_reverse():
+            value_bytes = reversed(value_bytes)
+
+        for byte in value_bytes:
+            self.append_byte(byte)
+
+    def acn_encode_real_ieee745_32_big_endian(self, value):
+        self.acn_encode_real_big_endian(value, 'f')
+
+    def acn_encode_real_ieee745_64_big_endian(self, value):
+        self.acn_encode_real_big_endian(value, 'd')
+
+    def acn_encode_real_little_endian(self, value: float, format_type='f'):
+        value_bytes = bytearray(struct.pack(format_type, value))
+
+        if not self._require_reverse():
+            value_bytes = reversed(value_bytes)
+
+        for byte in value_bytes:
+            self.append_byte(byte)
+
+    def acn_encode_real_ieee745_32_little_endian(self, value):
+        self.acn_encode_real_little_endian(value, 'f')
+
+    def acn_encode_real_ieee745_64_little_endian(self, value):
+        self.acn_encode_real_little_endian(value, 'd')
+
+    def acn_encode_string_ascii_fix_size(self, value, max_length=None, null_character=None):
+        max_length = max_length or len(value)
+        for i in range(max_length):
+            char = value[i]
+            if null_character is not None and ord(char) == null_character:
+                break
+
+            self.append_byte(ord(value))
+
+    def acn_encode_string_ascii_null_terminated(self, value, null_character, max_length=None):
+        self.acn_encode_string_ascii_fix_size(value, null_character=0, max_length=max_length)
+        self.append_byte(null_character)
+
+    def acn_encode_string_ascii_external_field_determinant(self, value, max_length):
+        self.acn_encode_string_ascii_fix_size(value, max_length=max_length, null_character=0)
+
+    def acn_encode_string_ascii_internal_field_determinant(self, value, min_length, max_length):
+        self.encode_constraint_number(min(len(value), max_length), min_length, max_length)
+        self.acn_encode_string_ascii_fix_size(value, max_length=max_length, null_character=0)
+
+    def acn_encode_string_char_index_fix_size(self, value, allowed_charset, max_length=None, null_character=None):
+        max_length = max_length or len(value)
+        for i in range(max_length):
+            char = value[i]
+            if null_character is not None and ord(char) == null_character:
+                break
+
+            index = allowed_charset.index(char)
+            self.encode_constraint_number(index, 0, len(allowed_charset) - 1)
+
+    def acn_encode_string_char_index_external_field_determinant(self, value, allowed_charset, max_length):
+        self.acn_encode_string_char_index_fix_size(value, allowed_charset, max_length=max_length, null_character=0)
+
+    def acn_encode_string_char_index_internal_field_determinant(self, value, allowed_charset, min_length, max_length):
+        self.encode_constraint_number(min(len(value), max_length), min_length, max_length)
+        self.acn_encode_string_char_index_fix_size(value, allowed_charset, max_length=max_length, null_character=0)
+
     # decoding
 
     def acn_decode_positive_integer_const_size(self, encoded_size_in_bits):
@@ -1038,6 +1106,40 @@ class BitStream:
         result = self.acn_decode_unsigned_integer_ascii_var_size_null_terminated()
 
         return sign * result
+
+    def acn_decode_real_big_endian(self, format_type='f'):
+        value_bytes = bytearray()
+
+        if self._require_reverse():
+            value_bytes = reversed(value_bytes)
+
+        for _ in bytearray(struct.pack(format_type, 0.0)):
+            value_bytes.append(self.read_byte())
+
+        return struct.unpack(format_type, value_bytes)
+
+    def acn_decode_real_ieee745_32_big_endian(self):
+        return self.acn_decode_real_big_endian('f')
+
+    def acn_decode_real_ieee745_64_big_endian(self):
+        return self.acn_decode_real_big_endian('d')
+
+    def acn_decode_real_little_endian(self, format_type='f'):
+        value_bytes = bytearray()
+
+        if not self._require_reverse():
+            value_bytes = reversed(value_bytes)
+
+        for _ in bytearray(struct.pack(format_type, 0.0)):
+            value_bytes.append(self.read_byte())
+
+        return struct.unpack(format_type, value_bytes)
+
+    def acn_decode_real_ieee745_32_little_endian(self):
+        return self.acn_decode_real_little_endian('f')
+
+    def acn_decode_real_ieee745_64_little_endian(self):
+        return self.acn_decode_real_little_endian('d')
 
 
 #############################
