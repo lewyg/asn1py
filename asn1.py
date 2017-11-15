@@ -906,7 +906,7 @@ class BitStream:
 
             self.append_byte(ord(value))
 
-    def acn_encode_string_ascii_null_terminated(self, value, null_character, max_length=None):
+    def acn_encode_string_ascii_null_terminated(self, value, null_character, max_length):
         self.acn_encode_string_ascii_fix_size(value, null_character=0, max_length=max_length)
         self.append_byte(null_character)
 
@@ -933,6 +933,12 @@ class BitStream:
     def acn_encode_string_char_index_internal_field_determinant(self, value, allowed_charset, min_length, max_length):
         self.encode_constraint_number(min(len(value), max_length), min_length, max_length)
         self.acn_encode_string_char_index_fix_size(value, allowed_charset, max_length=max_length, null_character=0)
+
+    def acn_encode_length(self, value, length_size_in_bits):
+        self.acn_encode_positive_integer_const_size(value, length_size_in_bits)
+
+    def encode_milbus(self, value):
+        return 32 if value == 0 else value
 
     # decoding
 
@@ -1140,6 +1146,54 @@ class BitStream:
 
     def acn_decode_real_ieee745_64_little_endian(self):
         return self.acn_decode_real_little_endian('d')
+
+    def acn_decode_string_ascii_fix_size(self, length):
+        result = ''
+        for i in range(length):
+            char = self.read_byte()
+            result += chr(char)
+
+        return result
+
+    def acn_decode_string_ascii_null_terminated(self, null_character, max_length):
+        result = ''
+        for i in range(max_length):
+            char = self.read_byte()
+
+            if char == ord(null_character):
+                break
+
+            result += chr(char)
+
+        return result
+
+    def acn_decode_string_ascii_external_field_determinant(self, length, max_length):
+        return self.acn_decode_string_ascii_fix_size(min(length, max_length))
+
+    def acn_decode_string_ascii_internal_field_determinant(self, min_length, max_length):
+        length = self.decode_constraint_number(min_length, max_length)
+        return self.acn_decode_string_ascii_fix_size(length)
+
+    def acn_decode_string_char_index_fix_size(self, length, allowed_charset):
+        result = ''
+        for i in range(length):
+            index = self.decode_constraint_number(0, len(allowed_charset) - 1)
+            result += allowed_charset[index]
+
+        return result
+
+    def acn_decode_string_char_index_external_field_determinant(self, length, allowed_charset):
+        return self.acn_decode_string_char_index_fix_size(length, allowed_charset)
+
+    def acn_decode_string_char_index_internal_field_determinant(self, allowed_charset, min_length, max_length):
+        length = self.decode_constraint_number(min_length, max_length)
+        return self.acn_decode_string_char_index_fix_size(length, allowed_charset)
+
+    def acn_decode_length(self, length_size_in_bits):
+        return self.acn_decode_positive_integer_const_size(length_size_in_bits)
+
+    def decode_milbus(self, value):
+        return 32 if value == 0 else value
 
 
 #############################
