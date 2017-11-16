@@ -257,7 +257,7 @@ class BitStreamTest(TestCase):
         self.b.encode_real(asn1.INT_MAX)
 
         self.b2 = BitStream(self.b)
-        self.assertEqual(asn1.INT_MAX, self.b2.decode_real())
+        self.assertAlmostEqual(float(asn1.INT_MAX), self.b2.decode_real(), delta=0.001)
 
     def test_encode_decode_real_minus_1_234(self):
         self.b.encode_real(-1.234)
@@ -281,7 +281,7 @@ class BitStreamTest(TestCase):
         self.b.encode_real(asn1.INT_MIN)
 
         self.b2 = BitStream(self.b)
-        self.assertEqual(asn1.INT_MIN, self.b2.decode_real())
+        self.assertAlmostEqual(float(asn1.INT_MIN), self.b2.decode_real(), delta=0.001)
 
     def test_encode_decode_real_inf(self):
         self.b.encode_real(asn1.INFINITY)
@@ -302,3 +302,40 @@ class BitStreamTest(TestCase):
 
     def test_integer_size_ascii(self):
         self.assertEqual(self.b.acn_get_integer_size_ascii(-123456789), 10)
+
+    def test_acn_encode_decode_positive_integer_const_size_0_0(self):
+        self.b.acn_encode_positive_integer_const_size(0, 0)
+
+        self.b2 = BitStream(self.b)
+        self.assertEqual(0, self.b2.acn_decode_positive_integer_const_size(0))
+
+    def test_acn_encode_decode_positive_integer_const_size_1_1(self):
+        self.b.acn_encode_positive_integer_const_size(1, 1)
+
+        self.b2 = BitStream(self.b)
+        self.assertEqual(1, self.b2.acn_decode_positive_integer_const_size(1))
+
+    def test_acn_encode_decode_positive_integer_const_size_1_10(self):
+        self.b.acn_encode_positive_integer_const_size(1, 10)
+
+        self.b2 = BitStream(self.b)
+        self.assertEqual(1, self.b2.acn_decode_positive_integer_const_size(10))
+
+    def test_acn_encode_decode_positive_integer_const_size_255_10(self):
+        self.b.acn_encode_positive_integer_const_size(255, 10)
+
+        self.b2 = BitStream(self.b)
+        self.assertEqual(255, self.b2.acn_decode_positive_integer_const_size(10))
+
+    def test_acn_encode_decode_positive_integer_const_size_max_10(self):
+        self.b.acn_encode_positive_integer_const_size(asn1.INT_MAX, 10)
+
+        self.b2 = BitStream(self.b)
+        max_10_bits = asn1.INT_MAX >> asn1.INT_MAX.bit_length() - 10
+        self.assertEqual(max_10_bits, self.b2.acn_decode_positive_integer_const_size(10))
+
+    def test_acn_encode_decode_positive_integer_const_size_max_max(self):
+        self.b.acn_encode_positive_integer_const_size(asn1.INT_MAX, asn1.INT_MAX.bit_length())
+
+        self.b2 = BitStream(self.b)
+        self.assertEqual(asn1.INT_MAX, self.b2.acn_decode_positive_integer_const_size(asn1.INT_MAX.bit_length()))
