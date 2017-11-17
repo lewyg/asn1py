@@ -339,3 +339,141 @@ class BitStreamTest(TestCase):
 
         self.b2 = BitStream(self.b)
         self.assertEqual(asn1.INT_MAX, self.b2.acn_decode_positive_integer_const_size(asn1.INT_MAX.bit_length()))
+
+    def test_acn_encode_positive_integer_const_size_8_0(self):
+        self.b.acn_encode_positive_integer_const_size_8(0)
+
+        self.b2 = BitStream(self.b)
+        self.assertEqual(0, self.b2.acn_decode_positive_integer_const_size_8())
+
+    def test_acn_encode_positive_integer_const_size_8_123(self):
+        self.b.acn_encode_positive_integer_const_size_8(123)
+
+        self.b2 = BitStream(self.b)
+        self.assertEqual(123, self.b2.acn_decode_positive_integer_const_size_8())
+
+    def test_acn_encode_positive_integer_const_size_8_255(self):
+        self.b.acn_encode_positive_integer_const_size_8(255)
+
+        self.b2 = BitStream(self.b)
+        self.assertEqual(255, self.b2.acn_decode_positive_integer_const_size_8())
+
+    def test_acn_encode_positive_integer_const_size_16_0_big(self):
+        self.b.acn_encode_positive_integer_const_size_16(0, 'big')
+
+        self.b2 = BitStream(self.b)
+        self.assertEqual(0, self.b2.acn_decode_positive_integer_const_size_16('big'))
+
+    def test_acn_encode_positive_integer_const_size_16_0_little(self):
+        self.b.acn_encode_positive_integer_const_size_16(0, 'little')
+
+        self.b2 = BitStream(self.b)
+        self.assertEqual(0, self.b2.acn_decode_positive_integer_const_size_16('little'))
+
+    def test_acn_encode_positive_integer_const_size_16_1234_big(self):
+        self.b.acn_encode_positive_integer_const_size_16(1234, 'big')
+
+        self.b2 = BitStream(self.b)
+        self.assertEqual(1234, self.b2.acn_decode_positive_integer_const_size_16('big'))
+
+    def test_acn_encode_positive_integer_const_size_16_1234_little(self):
+        self.b.acn_encode_positive_integer_const_size_16(1234, 'little')
+
+        self.b2 = BitStream(self.b)
+        self.assertEqual(1234, self.b2.acn_decode_positive_integer_const_size_16('little'))
+
+    def test_acn_encode_positive_integer_const_size_16_face_big(self):
+        self.b.acn_encode_positive_integer_const_size_16(0xFACE, 'big')
+
+        self.b2 = BitStream(self.b)
+        self.assertEqual(0xFACE, self.b2.acn_decode_positive_integer_const_size_16('big'))
+
+    def test_acn_encode_positive_integer_const_size_16_face_little(self):
+        self.b.acn_encode_positive_integer_const_size_16(0xFACE, 'little')
+
+        self.b2 = BitStream(self.b)
+        self.assertEqual(0xFACE, self.b2.acn_decode_positive_integer_const_size_16('little'))
+
+    def test_acn_encode_positive_integer_const_size_32_0_big(self):
+        self.b.acn_encode_positive_integer_const_size_32(0, 'big')
+
+        self.b2 = BitStream(self.b)
+        self.assertEqual(0, self.b2.acn_decode_positive_integer_const_size_32('big'))
+
+    def test_acn_encode_positive_integer_const_size_32_0_little(self):
+        self.b.acn_encode_positive_integer_const_size_32(0, 'little')
+
+        self.b2 = BitStream(self.b)
+        self.assertEqual(0, self.b2.acn_decode_positive_integer_const_size_32('little'))
+
+    def test_acn_encode_positive_integer_const_size_32_face_big(self):
+        self.b.acn_encode_positive_integer_const_size_32(0xFACE, 'big')
+
+        self.b2 = BitStream(self.b)
+        self.assertEqual(0xFACE, self.b2.acn_decode_positive_integer_const_size_32('big'))
+
+    def test_acn_encode_positive_integer_const_size_32_face_little(self):
+        self.b.acn_encode_positive_integer_const_size_32(0xFACE, 'little')
+
+        self.b2 = BitStream(self.b)
+        self.assertEqual(0xFACE, self.b2.acn_decode_positive_integer_const_size_32('little'))
+
+    def test_acn_encode_positive_integer_const_size_32_f0a0c0e0_big(self):
+        self.b.acn_encode_positive_integer_const_size_32(0xF0A0C0E0, 'big')
+
+        self.b2 = BitStream(self.b)
+        self.assertEqual(0xF0A0C0E0, self.b2.acn_decode_positive_integer_const_size_32('big'))
+
+    def test_acn_encode_positive_integer_const_size_32_f0a0c0e0_little(self):
+        self.b.acn_encode_positive_integer_const_size_32(0xF0A0C0E0, 'little')
+
+        self.b2 = BitStream(self.b)
+        self.assertEqual(0xF0A0C0E0, self.b2.acn_decode_positive_integer_const_size_32('little'))
+
+    def test_acn_encode_positive_integer_const_size_64_0_big(self):
+        self.b.acn_encode_positive_integer_const_size_64(0, 'big')
+
+        self.b2 = BitStream(self.b)
+        self.assertEqual(0, self.b2.acn_decode_positive_integer_const_size_64('big'))
+
+    def test_acn_encode_positive_integer_const_size_64_0_little(self):
+        self.b.acn_encode_positive_integer_const_size_64(0, 'little')
+
+        self.b2 = BitStream(self.b)
+        self.assertEqual(0, self.b2.acn_decode_positive_integer_const_size_64('little'))
+
+    def test_acn_encode_positive_integer_const_size_64_f0a0c0e0_big(self):
+        self.b.acn_encode_positive_integer_const_size_64(0xF0A0C0E0, 'big')
+
+        self.b2 = BitStream(self.b)
+        self.assertEqual(0xF0A0C0E0, self.b2.acn_decode_positive_integer_const_size_64('big'))
+
+    def test_acn_encode_positive_integer_const_size_64_f0a0c0e0_little(self):
+        self.b.acn_encode_positive_integer_const_size_64(0xF0A0C0E0, 'little')
+
+        self.b2 = BitStream(self.b)
+        self.assertEqual(0xF0A0C0E0, self.b2.acn_decode_positive_integer_const_size_64('little'))
+
+    def test_acn_encode_positive_integer_const_size_64_f0a0c0e0f0a0c0e0_big(self):
+        self.b.acn_encode_positive_integer_const_size_64(0xF0A0C0E0F0A0C0E0, 'big')
+
+        self.b2 = BitStream(self.b)
+        self.assertEqual(0xF0A0C0E0F0A0C0E0, self.b2.acn_decode_positive_integer_const_size_64('big'))
+
+    def test_acn_encode_positive_integer_const_size_64_f0a0c0e0f0a0c0e0_little(self):
+        self.b.acn_encode_positive_integer_const_size_64(0xF0A0C0E0F0A0C0E0, 'little')
+
+        self.b2 = BitStream(self.b)
+        self.assertEqual(0xF0A0C0E0F0A0C0E0, self.b2.acn_decode_positive_integer_const_size_64('little'))
+
+    def test_acn_encode_positive_integer_var_size_length_embedded_0(self):
+        self.b.acn_encode_positive_integer_var_size_length_embedded(0)
+
+        self.b2 = BitStream(self.b)
+        self.assertEqual(0, self.b2.acn_decode_positive_integer_var_size_length_embedded())
+
+    def test_acn_encode_positive_integer_var_size_length_embedded_max(self):
+        self.b.acn_encode_positive_integer_var_size_length_embedded(asn1.INT_MAX)
+
+        self.b2 = BitStream(self.b)
+        self.assertEqual(asn1.INT_MAX, self.b2.acn_decode_positive_integer_var_size_length_embedded())
