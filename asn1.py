@@ -292,15 +292,21 @@ def negate_byte(value):
 
 
 def get_signed_int_byte_length(value: int):
+    bit_length = get_signed_int_bit_length(value)
+
+    return get_byte_length_from_bit_length(bit_length) or 1
+
+
+def get_signed_int_bit_length(value: int):
     if value >= 0:
         bit_length = value.bit_length()
     else:
         bit_length = int(~value).bit_length()
 
-    if not bit_length % WORD_SIZE:
+    if bit_length:
         bit_length += 1  # one bit for mark sign
 
-    return get_byte_length_from_bit_length(bit_length) or 1
+    return bit_length
 
 
 def int_to_uint(value):
@@ -713,7 +719,7 @@ class BitStream:
             value //= 10
             result += 1
 
-        return result   # len(str(value))
+        return result  # len(str(value))
 
     def acn_get_integer_size_ascii(self, value):
         if value < 0:
@@ -781,28 +787,38 @@ class BitStream:
         self._acn_encode_unsigned_integer(value, n_bytes)
 
     def acn_encode_integer_twos_complement_const_size(self, value, encoded_size_in_bits):
+        bit_length = get_signed_int_bit_length(value)
+        assert bit_length <= encoded_size_in_bits
+
         if value >= 0:
             self.append_bits_zero(encoded_size_in_bits - value.bit_length())
             self.encode_non_negative_integer(value)
 
         else:
-            self.append_bits_one(encoded_size_in_bits - (-value).bit_length())
+            self.append_bits_one(encoded_size_in_bits - (~value).bit_length())
             self.encode_non_negative_integer(~value, True)
 
     def acn_encode_integer_twos_complement_const_size_8(self, value):
-        self.acn_encode_positive_integer_const_size_8(value)
+        assert get_signed_int_bit_length(value) <= 8
+        self.acn_encode_positive_integer_const_size_8(int_to_uint(value))
 
     def acn_encode_integer_twos_complement_const_size_16(self, value, byteorder):
-        self.acn_encode_positive_integer_const_size_16(value, byteorder)
+        assert get_signed_int_bit_length(value) <= 16
+        self.acn_encode_positive_integer_const_size_16(int_to_uint(value), byteorder)
 
     def acn_encode_integer_twos_complement_const_size_32(self, value, byteorder):
-        self.acn_encode_positive_integer_const_size_32(value, byteorder)
+        assert get_signed_int_bit_length(value) <= 32
+        self.acn_encode_positive_integer_const_size_32(int_to_uint(value), byteorder)
 
     def acn_encode_integer_twos_complement_const_size_64(self, value, byteorder):
-        self.acn_encode_positive_integer_const_size_64(value, byteorder)
+        assert get_signed_int_bit_length(value) <= 64
+        self.acn_encode_positive_integer_const_size_64(int_to_uint(value), byteorder)
 
-    def acn_encode_integer_twos_complement_var_size(self, value):
-        self.acn_encode_positive_integer_var_size_length_embedded(value)
+    def acn_encode_integer_twos_complement_var_size_length_embedded(self, value):
+        n_bytes = get_signed_int_byte_length(value)
+
+        self.append_byte(n_bytes)
+        self._acn_encode_unsigned_integer(int_to_uint(value), n_bytes)
 
     def acn_encode_integer_bcd_const_size(self, value, encoded_size_in_nibbles):
         assert encoded_size_in_nibbles <= 100
@@ -810,12 +826,12 @@ class BitStream:
         digits = list()
         while value > 0:
             digits.append(value % 10)
-            value /= 10
+            value //= 10
 
         assert len(digits) <= encoded_size_in_nibbles
 
         for digit in reversed(digits):
-            self.append_partial_byte(digit & 0xF, 4)
+            self.append_partial_byte((digit & 0xF) << 4, 4)
 
     def acn_encode_integer_bcd_var_size_length_embedded(self, value):
         n_nibbles = self.acn_get_integer_size_bcd(value)
@@ -825,7 +841,7 @@ class BitStream:
     def acn_encode_integer_bcd_var_size_null_terminated(self, value):
         n_nibbles = self.acn_get_integer_size_bcd(value)
         self.acn_encode_integer_bcd_const_size(value, n_nibbles)
-        self.append_partial_byte(0xF, 4)
+        self.append_partial_byte(0xF << 4, 4)
 
     def acn_encode_unsigned_integer_ascii_const_size(self, value, encoded_size_in_bytes):
         assert encoded_size_in_bytes <= 100
@@ -833,7 +849,7 @@ class BitStream:
         digits = list()
         while value > 0:
             digits.append(value % 10)
-            value /= 10
+            value //= 10
 
         assert len(digits) <= encoded_size_in_bytes
 
@@ -856,7 +872,7 @@ class BitStream:
         self.acn_encode_unsigned_integer_ascii_const_size(value, n_chars)
 
     def acn_encode_signed_integer_ascii_var_size_length_embedded(self, value):
-        n_chars = self.acn_get_integer_size_bcd(value)
+        n_chars = self.acn_get_integer_size_ascii(value)
         self.append_byte(n_chars)
         self.acn_encode_signed_integer_ascii_const_size(value, n_chars)
 
@@ -866,7 +882,7 @@ class BitStream:
         self.append_byte(0)
 
     def acn_encode_signed_integer_ascii_var_size_null_terminated(self, value):
-        n_chars = self.acn_get_integer_size_bcd(value)
+        n_chars = self.acn_get_integer_size_ascii(value)
         self.acn_encode_signed_integer_ascii_const_size(value, n_chars)
         self.append_byte(0)
 
@@ -902,12 +918,14 @@ class BitStream:
 
     def acn_encode_string_ascii_fix_size(self, value, max_length=None, null_character=None):
         max_length = max_length or len(value)
+        max_length = min(max_length, len(value))
+
         for i in range(max_length):
             char = value[i]
             if null_character is not None and ord(char) == null_character:
                 break
 
-            self.append_byte(ord(value))
+            self.append_byte(ord(char))
 
     def acn_encode_string_ascii_null_terminated(self, value, null_character, max_length):
         self.acn_encode_string_ascii_fix_size(value, null_character=0, max_length=max_length)
@@ -922,6 +940,8 @@ class BitStream:
 
     def acn_encode_string_char_index_fix_size(self, value, allowed_charset, max_length=None, null_character=None):
         max_length = max_length or len(value)
+        max_length = min(max_length, len(value))
+
         for i in range(max_length):
             char = value[i]
             if null_character is not None and ord(char) == null_character:
@@ -997,7 +1017,7 @@ class BitStream:
 
     def acn_decode_integer_twos_complement_const_size(self, encoded_size_in_bits):
         value = 0
-        n_bytes = encoded_size_in_bits / WORD_SIZE
+        n_bytes = encoded_size_in_bits // WORD_SIZE
         rest_bits = encoded_size_in_bits % WORD_SIZE
 
         for i in range(n_bytes):
@@ -1009,8 +1029,12 @@ class BitStream:
             value |= byte
 
         if rest_bits:
+            byte = self.read_partial_byte(rest_bits)
+            if n_bytes == 0 and byte > 127:
+                value = -1
+
             value <<= rest_bits
-            value |= self.read_partial_byte(rest_bits) >> (WORD_SIZE - rest_bits)
+            value |= byte >> (WORD_SIZE - rest_bits)
 
         return value
 
@@ -1026,32 +1050,26 @@ class BitStream:
     def acn_decode_integer_twos_complement_const_size_64(self, byteorder):
         return uint_to_int(self.acn_decode_positive_integer_const_size_64(byteorder), 8)
 
-    def acn_decode_integer_var_size_length_embedded(self):
+    def acn_decode_integer_twos_complement_var_size_length_embedded(self):
         n_bytes = self.read_byte()
         value = 0
-        negate = False
 
         for i in range(n_bytes):
             byte = self.read_byte()
             if i == 0 and byte > 127:
                 value = -1
-                negate = True
 
             value <<= WORD_SIZE
             value |= byte
-
-        if negate:
-            value = ~value
 
         return value
 
     def acn_decode_integer_bcd_const_size(self, encoded_size_in_nibbles):
         result = 0
-        while encoded_size_in_nibbles > 0:
-            digit = self.read_partial_byte(4)
+        for i in range(encoded_size_in_nibbles):
+            digit = self.read_partial_byte(4) >> 4
             result *= 10
             result += digit
-            encoded_size_in_nibbles -= 1
 
         return result
 
@@ -1061,12 +1079,12 @@ class BitStream:
 
     def acn_decode_integer_bcd_var_size_null_terminated(self):
         result = 0
-        digit = self.read_partial_byte(4)
+        digit = self.read_partial_byte(4) >> 4
 
         while digit <= 9:
             result *= 10
             result += digit
-            digit = self.read_partial_byte(4)
+            digit = self.read_partial_byte(4) >> 4
 
         return result
 
@@ -1119,13 +1137,13 @@ class BitStream:
     def acn_decode_real_big_endian(self, format_type='f'):
         value_bytes = bytearray()
 
-        if self._requires_reverse():
-            value_bytes = reversed(value_bytes)
-
         for _ in bytearray(struct.pack(format_type, 0.0)):
             value_bytes.append(self.read_byte())
 
-        return struct.unpack(format_type, value_bytes)
+        if self._requires_reverse():
+            value_bytes = bytes(reversed(value_bytes))
+
+        return struct.unpack(format_type, value_bytes)[0]
 
     def acn_decode_real_ieee745_32_big_endian(self):
         return self.acn_decode_real_big_endian('f')
@@ -1136,13 +1154,13 @@ class BitStream:
     def acn_decode_real_little_endian(self, format_type='f'):
         value_bytes = bytearray()
 
-        if not self._requires_reverse():
-            value_bytes = reversed(value_bytes)
-
         for _ in bytearray(struct.pack(format_type, 0.0)):
             value_bytes.append(self.read_byte())
 
-        return struct.unpack(format_type, value_bytes)
+        if not self._requires_reverse():
+            value_bytes = bytes(reversed(value_bytes))
+
+        return struct.unpack(format_type, value_bytes)[0]
 
     def acn_decode_real_ieee745_32_little_endian(self):
         return self.acn_decode_real_little_endian('f')
@@ -1163,7 +1181,7 @@ class BitStream:
         for i in range(max_length):
             char = self.read_byte()
 
-            if char == ord(null_character):
+            if char == null_character:
                 break
 
             result += chr(char)
