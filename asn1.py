@@ -331,6 +331,16 @@ class BitStream:
         self._current_byte = 0
         self._current_bit = 0
 
+    def from_file(self, filename):
+        file = open(filename, "rb")
+        self._buffer = bitarray(file.read())
+        self._current_byte = 0
+        self._current_bit = 0
+
+    def to_file(self, filename):
+        file = open(filename, "wb")
+        file.write(self._buffer.bytes())
+
     def __len__(self):
         return len(self._buffer)
 
