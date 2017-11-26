@@ -5,32 +5,65 @@ MyStruct ::= SEQUENCE {
     c MyEnum OPTIONAL
 }
 """
-from asn1 import Sequence, Integer
+from asn1 import Sequence, Integer, Real
 from samples.enumerated import MyEnum
 
 
 class MyStruct_a(Integer):
     constraints = '1..10'
 
-    def init_value(self):
+    @classmethod
+    def init_value(cls):
         return 1
 
-    def check_constraints(self, value):
+    @classmethod
+    def check_constraints(cls, value):
         result = 1 <= value <= 10
 
         return result
 
 
 class MyStruct(Sequence):
-    def __init__(self):
-        self.a: MyStruct_a.__typing__ = MyStruct_a()
-        self.b: Integer.__typing__ = Integer()
-        self.c: MyEnum.__typing__ = MyEnum()
+    @property
+    def a(self):
+        return self._a.get()
+
+    @a.setter
+    def a(self, value):
+        self._a.set(value)
+
+    @property
+    def b(self):
+        return self._b.get()
+
+    @b.setter
+    def b(self, value):
+        self._b.set(value)
+
+    @property
+    def c(self):
+        return self._c.get()
+
+    @c.setter
+    def c(self, value):
+        self._c.set(value)
+
+    def __init__(self, source):
+        self._a = MyStruct_a()
+        self._b = Real()
+        self._c = MyEnum()
 
         self.attributes = dict(
             a=True,
             b=True,
             c=True,
         )
+        self.optionals = ['c']
 
         self.initialized = True
+        self._init_sequence(source)
+
+
+x = MyStruct({'a': 8, 'b': 5.5})
+x.c = 3
+print(x)

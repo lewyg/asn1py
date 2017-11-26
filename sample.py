@@ -322,7 +322,7 @@ class MyStruct(asn1.Sequence):
         self.optionals.append('c')
 
         self.initialized = True
-        self._init_from_source(source)
+        self._init_sequence(source)
 
     @classmethod
     def _uper_encode(cls, bit_stream, value):
@@ -333,7 +333,8 @@ class MyStruct(asn1.Sequence):
         return cls._default_uper_decode(bit_stream)
 
 
-class MyStructArr(asn1.SequenceOf):
+
+class MyStructArr(asn1.SequenceOf['MyStructArr.__element__.__typing__']):
     class _ElementType(MyStruct):
         pass
 
@@ -358,7 +359,8 @@ class MyStructArr(asn1.SequenceOf):
     def _uper_decode(cls, bit_stream):
         return cls._default_uper_decode(bit_stream, 2, 4)
 
-
+x = MyStructArr()
+x[1].
 class MyChoice(asn1.Choice):
     def __init__(self, choice=None):
         self.attributes = dict()
@@ -517,7 +519,7 @@ class MySqOf(asn1.SequenceOf):
             self.optionals.append('c2')
     
             self.initialized = True
-            self._init_from_source(source)
+            self._init_sequence(source)
     
         @classmethod
         def _uper_encode(cls, bit_stream, value):
@@ -909,7 +911,7 @@ class AComplexMessage(asn1.Sequence):
         self.attributes['bBeta'] = True
 
         self.initialized = True
-        self._init_from_source(source)
+        self._init_sequence(source)
 
     @classmethod
     def _uper_encode(cls, bit_stream, value):
