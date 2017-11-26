@@ -98,7 +98,7 @@ class bitarray:
         byte_position = self.__get_byte_position(item)
 
         byte = self._data[byte_position]
-        byte = self.__set_bit(byte, bit_position) if value else self.__clear_bit(byte, bit_position)
+        byte = self.__set_bit(byte, bit_position) if int(value) else self.__clear_bit(byte, bit_position)
         self._data[byte_position] = byte
 
     def __delitem__(self, item):
@@ -170,7 +170,7 @@ class bitarray:
             byte = 0b00000000
 
         bit_position = self.__get_bit_position(self._bitsize)
-        byte = self.__set_bit(byte, bit_position) if bit else self.__clear_bit(byte, bit_position)
+        byte = self.__set_bit(byte, bit_position) if int(bit) else self.__clear_bit(byte, bit_position)
 
         self._bitsize += 1
         self._data.append(byte)
@@ -280,7 +280,7 @@ class bitarray:
 
 
 def is_bit(c):
-    return str(c) in ['0', '1']
+    return str(int(c)) in ['0', '1']
 
 
 def get_byte_length_from_bit_length(bit_length):
@@ -1233,9 +1233,7 @@ class BitStream:
 
 
 class ASN1Type:
-    __typing__ = 'ASN1Type'
-
-    constraints = ''
+    __constraints__ = ''
 
     def get(self):
         return self
@@ -1256,12 +1254,12 @@ class ASN1Type:
 
             elif isinstance(self, ASN1ArrayOfType):
                 value = '{} elements'.format(len(value))
-                expected_type = 'list of {}'.format(self.__element__)
+                expected_type = 'list of {}'.format(self.ElementType)
 
             else:
                 expected_type = ASN1ComposedType
 
-            raise ConstraintException(type(self).__name__, value, self.constraints, expected_type)
+            raise ConstraintException(type(self).__name__, value, self.__constraints__, expected_type)
 
     @classmethod
     def check_constraints(cls, value):
@@ -1293,8 +1291,11 @@ class ASN1Type:
 
     # Encoding and decoding functions
 
+    def encode(self, bit_stream: BitStream, encoding=None):
+        self.class_encode(bit_stream, self.get(), encoding)
+
     @classmethod
-    def encode(cls, bit_stream: BitStream, value, encoding=None):
+    def class_encode(cls, bit_stream: BitStream, value, encoding=None):
         if isinstance(value, cls):
             value = value.get()
 
@@ -1314,8 +1315,11 @@ class ASN1Type:
     def _uper_encode(cls, bit_stream: BitStream, value):
         pass
 
+    def decode(self, bit_stream: BitStream, encoding=None):
+        self.set(self.class_decode(bit_stream, encoding))
+
     @classmethod
-    def decode(cls, bit_stream: BitStream, encoding=None) -> typing.Any:
+    def class_decode(cls, bit_stream: BitStream, encoding=None) -> typing.Any:
         if encoding == 'acn':
             value = cls._acn_decode(bit_stream)
         else:
@@ -1335,10 +1339,7 @@ class ASN1Type:
         return 0
 
 
-T = typing.TypeVar('T')
-
-
-class ASN1SimpleType(ASN1Type, typing.Generic[T]):
+class ASN1SimpleType(ASN1Type):
     __simple__ = object
 
     def __init__(self, source=None):
@@ -1348,7 +1349,7 @@ class ASN1SimpleType(ASN1Type, typing.Generic[T]):
     def init_value(cls):
         return cls.__simple__()
 
-    def get(self) -> T:
+    def get(self):
         return self._value
 
     @classmethod
@@ -1360,75 +1361,58 @@ class ASN1SimpleType(ASN1Type, typing.Generic[T]):
 
 
 class ASN1ComposedType(ASN1Type):
-    attributes = dict()
-    initialized = False
+    __attributes__ = dict()
+    __initialized__ = False
 
     @classmethod
     def _check_type(cls, value):
         return isinstance(value, ASN1ComposedType) and (isinstance(value, cls) or issubclass(cls, type(value)))
 
     def _set_value(self, value):
-        for attr in value.attributes:
-            if value.attributes[attr]:
+        for attr in value.__attributes__:
+            if value.__attributes__[attr]:
                 setattr(self, attr, object.__getattribute__(value, attr))
 
-            self.attributes[attr] = value.attributes[attr]
+            self.__attributes__[attr] = value.__attributes__[attr]
 
-    def __getattribute__(self, item):
-        initialized = object.__getattribute__(self, 'initialized')
+    def _assert_attribute_present(self, item):
+        if item in self.__attributes__ and not self.__attributes__[item]:
+            raise AttributeError("Attribute {} not present!")
 
-        if not initialized:
-            return object.__getattribute__(self, item)
+    def get_attribute_exists(self, key):
+        return self.__attributes__[key]
 
-        attributes = object.__getattribute__(self, 'attributes')
-
-        if item in attributes:
-            if attributes[item]:
-                return object.__getattribute__(self, item).get()
-
-            else:
-                raise AttributeError("Attribute {} not present!")
-
-        else:
-            return object.__getattribute__(self, item)
+    def set_attribute_exists(self, key, exists: bool):
+        self.__attributes__[key] = exists
 
     def __getattr__(self, item):
         raise AttributeError("Attribute {} not exists!".format(item))
 
     def __setattr__(self, key, value):
-        if not self.initialized:
+        if not self.__initialized__:
             object.__setattr__(self, key, value)
 
-        elif key in self.attributes:
-            attribute = object.__getattribute__(self, key)
-
-            if value is not None:
-                self._set_attribute_exists(key, True)
-                attribute.set(value)
-
-            else:
-                attribute_exists = False
-                if isinstance(attribute, Null):
-                    attribute_exists = not self.attributes[key]
-
-                self._set_attribute_exists(key, attribute_exists)
+        elif key in self.__attributes__:
+            object.__setattr__(self, key, value)
+            self.set_attribute_exists(key, True)
 
         else:
             raise AttributeError("Can't set {} attribute!".format(key))
 
-    def _set_attribute_exists(self, key, exists: bool):
-        self.attributes[key] = exists
-
     def __delattr__(self, item):
-        self.attributes[item] = False
+        if item in self.__attributes__:
+            self.set_attribute_exists(item, False)
+        else:
+            raise AttributeError("Can't delete {} attribute!".format(item))
 
     def __eq__(self, other):
         if not isinstance(other, type(self)):
             return False
 
         else:
-            for attr in other.attributes:
-                if other.attributes[attr] != self.attributes[attr] or getattr(other, attr) != getattr(self, attr):
+            for attr in other.__attributes__:
+                if other.__attributes__[attr] != self.__attributes__[attr] or getattr(other, attr) != getattr(self,
+                                                                                                              attr):
                     return False
 
             return True
@@ -1437,10 +1421,10 @@ class ASN1ComposedType(ASN1Type):
         return str(vars(self))
 
     def __str__(self):
-        return str({attr: str(getattr(self, attr)) for attr in self.attributes if self.attributes[attr]})
+        return str({attr: str(getattr(self, attr)) for attr in self.__attributes__ if self.__attributes__[attr]})
 
 
-class ASN1StringWrappedType(ASN1SimpleType, typing.Generic[T]):
+class ASN1StringWrappedType(ASN1SimpleType):
     @staticmethod
     def _wrap_string(wrapped, setter):
         class _StringWrapper(wrapped):
@@ -1474,9 +1458,11 @@ class ASN1StringWrappedType(ASN1SimpleType, typing.Generic[T]):
         self._value = self._wrap_string(self.__simple__, self.set)(value)
 
 
+T = typing.TypeVar('T')
+
+
 class ASN1ArrayOfType(ASN1Type, typing.Generic[T]):
-    __typing__ = 'ASN1ArrayOfType'
-    __element__ = ASN1SimpleType
+    ElementType = ASN1Type
 
     def __init__(self, source=None):
         if source and isinstance(source, list):
@@ -1496,7 +1482,7 @@ class ASN1ArrayOfType(ASN1Type, typing.Generic[T]):
         element_list = list()
 
         for i in range(size):
-            element_list.append(self.__element__())
+            element_list.append(self.ElementType())
 
         return element_list
 
@@ -1510,10 +1496,10 @@ class ASN1ArrayOfType(ASN1Type, typing.Generic[T]):
     def _set_value(self, value):
         self._list = list()
         for i, elem in enumerate(value):
-            if isinstance(elem, dict) and issubclass(self.__element__, ASN1ComposedType):
-                elem = self.__element__(elem)
+            if isinstance(elem, dict) and issubclass(self.ElementType, ASN1ComposedType):
+                elem = self.ElementType(elem)
 
-            tmp = self.__element__()
+            tmp = self.ElementType()
             tmp.set(elem)
             self._list.append(tmp)
 
@@ -1581,7 +1567,7 @@ class ASN1ArrayOfType(ASN1Type, typing.Generic[T]):
         return str([str(elem) for elem in self._list])
 
 
-class Enumerated(ASN1SimpleType[Enum]):
+class Enumerated(ASN1SimpleType):
     class Value(Enum):
         # NONE = None
 
@@ -1594,7 +1580,9 @@ class Enumerated(ASN1SimpleType[Enum]):
             return self.value == other
 
     __simple__ = Value
-    __typing__ = Value
+
+    if typing.TYPE_CHECKING:
+        def get(self) -> Enum: ...
 
     @classmethod
     def init_value(cls):
@@ -1635,7 +1623,7 @@ class Enumerated(ASN1SimpleType[Enum]):
         return [e.value for e in cls.Value][1:]
 
 
-class Null(ASN1SimpleType[None]):
+class Null(ASN1SimpleType):
     def __init__(self):
         super().__init__(None)
         self._value = None
@@ -1649,9 +1637,11 @@ class Null(ASN1SimpleType[None]):
             raise ConstraintException(type(self).__name__, value, "Null can't be set", None)
 
 
-class Integer(ASN1SimpleType[int]):
+class Integer(ASN1SimpleType):
     __simple__ = int
-    __typing__ = int
+
+    if typing.TYPE_CHECKING:
+        def get(self) -> int: ...
 
     @classmethod
     def _default_uper_encode(cls, bit_stream: BitStream, value, min_val=None, max_val=None):
@@ -1675,9 +1665,22 @@ class Integer(ASN1SimpleType[int]):
             return bit_stream.decode_number()
 
 
-class Real(ASN1SimpleType[float]):
+class PosInteger(ASN1SimpleType):
+    __simple__ = int
+
+    if typing.TYPE_CHECKING:
+        def get(self) -> int: ...
+
+    @classmethod
+    def _check_type(cls, value):
+        return super()._check_type(value) and value >= 0
+
+
+class Real(ASN1SimpleType):
     __simple__ = float
-    __typing__ = float
+
+    if typing.TYPE_CHECKING:
+        def get(self) -> float: ...
 
     @classmethod
     def _check_type(cls, value):
@@ -1695,9 +1698,11 @@ class Real(ASN1SimpleType[float]):
         return bit_stream.decode_real()
 
 
-class Boolean(ASN1SimpleType[bool]):
+class Boolean(ASN1SimpleType):
     __simple__ = bool
-    __typing__ = bool
+
+    if typing.TYPE_CHECKING:
+        def get(self) -> bool: ...
 
     @classmethod
     def _check_type(cls, value):
@@ -1715,9 +1720,11 @@ class Boolean(ASN1SimpleType[bool]):
         return bool(bit_stream.read_bit())
 
 
-class BitString(ASN1StringWrappedType[bitarray]):
+class BitString(ASN1StringWrappedType):
     __simple__ = bitarray
-    __typing__ = bitarray
+
+    if typing.TYPE_CHECKING:
+        def get(self) -> bitarray: ...
 
     def set(self, value):
         if isinstance(value, bytes) or isinstance(value, bytearray):
@@ -1744,9 +1751,11 @@ class BitString(ASN1StringWrappedType[bitarray]):
         return bit_stream.read_bits(min_size)
 
 
-class OctetString(ASN1StringWrappedType[bytearray]):
+class OctetString(ASN1StringWrappedType):
     __simple__ = bytearray
-    __typing__ = bytearray
+
+    if typing.TYPE_CHECKING:
+        def get(self) -> bytearray: ...
 
     @classmethod
     def _check_type(cls, value):
@@ -1773,9 +1782,11 @@ class OctetString(ASN1StringWrappedType[bytearray]):
         return result
 
 
-class IA5String(ASN1StringWrappedType[str]):
+class IA5String(ASN1StringWrappedType):
     __simple__ = str
-    __typing__ = str
+
+    if typing.TYPE_CHECKING:
+        def get(self) -> str: ...
 
     @classmethod
     def _default_uper_encode(cls, bit_stream: BitStream, value, min_size, max_size):
@@ -1798,13 +1809,15 @@ class IA5String(ASN1StringWrappedType[str]):
         return result
 
 
-class NumericString(ASN1StringWrappedType[str]):
+class NumericString(ASN1StringWrappedType):
     __simple__ = str
-    __typing__ = str
+
+    if typing.TYPE_CHECKING:
+        def get(self) -> str: ...
 
     @classmethod
     def _check_type(cls, value):
-        return super()._check_type(value) and str(value).replace(' ', '').isdigit()
+        return super()._check_type(value) and str(value).replace(' ', '').isdigit() or not str(value).replace(' ', '')
 
     @classmethod
     def _default_uper_encode(cls, bit_stream: BitStream, value, min_size, max_size):
@@ -1830,29 +1843,31 @@ class NumericString(ASN1StringWrappedType[str]):
 
 
 class Sequence(ASN1ComposedType):
-    optionals = list()
+    __optionals__ = list()
 
-    def _init_from_source(self, source):
+    def _init_sequence(self, source):
         if not source:  # default initialization
             return
 
-        for attribute in self.attributes:
-            self.attributes[attribute] = False
-            value = source.get(attribute, None)
-            setattr(self, attribute, value)
+        for attribute in self.__attributes__:
+            try:
+                value = source[attribute]
+                setattr(self, attribute, value)
+            except KeyError:
+                delattr(self, attribute)
 
-    def _set_attribute_exists(self, key, exists: bool):
-        if not exists and key not in self.optionals:
+    def set_attribute_exists(self, key, exists: bool):
+        if not exists and key not in self.__optionals__:
             raise AttributeError("Attribute {} of {} object can't be Optional!".format(key, type(self).__name__))
 
-        self.attributes[key] = exists
+        self.__attributes__[key] = exists
 
     @classmethod
     def _default_uper_encode(cls, bit_stream: BitStream, value):
         for opt in value.optionals:
-            bit_stream.append_bit(int(value.attributes[opt]))
+            bit_stream.append_bit(int(value.__attributes__[opt]))
 
-        for attr, exists in value.attributes.items():
+        for attr, exists in value.__attributes__.items():
             if exists:
                 attribute = object.__getattribute__(value, attr)
                 attribute.encode(bit_stream, attribute.get())
@@ -1860,13 +1875,13 @@ class Sequence(ASN1ComposedType):
     @classmethod
     def _default_uper_decode(cls, bit_stream: BitStream):
         result = cls()
-        opt_mask = bit_stream.read_bits(len(result.optionals))
+        opt_mask = bit_stream.read_bits(len(result.__optionals__))
 
-        for i, opt in enumerate(result.optionals):
-            result.attributes[opt] = bool(opt_mask[i // WORD_SIZE] >> (7 - i) & 1)
+        for i, opt in enumerate(result.__optionals__):
+            result.__attributes__[opt] = bool(opt_mask[i // WORD_SIZE] >> (7 - i) & 1)
 
-        for attr in result.attributes:
-            if result.attributes[attr]:
+        for attr in result.__attributes__:
+            if result.__attributes__[attr]:
                 attribute = object.__getattribute__(result, attr)
                 setattr(result, attr, attribute.decode(bit_stream))
 
@@ -1880,11 +1895,11 @@ class Set(Sequence):
 class Choice(ASN1ComposedType):
     def _init_choice(self, choice):
         if choice:
-            attribute = object.__getattribute__(self, choice['name'])
-            setattr(self, choice['name'], attribute.__class__(choice['value']))
+            attribute_class = getattr(self, "{}Type".format(choice['name']))
+            setattr(self, choice['name'], attribute_class(choice['value']))
 
         else:
-            self._set_choice(list(self.attributes.keys())[0])
+            self._set_choice(list(self.__attributes__.keys())[0])
 
     def __setattr__(self, key, value):
         super().__setattr__(key, value)
@@ -1892,24 +1907,24 @@ class Choice(ASN1ComposedType):
         self._set_choice(key)
 
     def _set_choice(self, key):
-        for choice in self.attributes:
-            self.attributes[choice] = False
+        for choice in self.__attributes__:
+            self.set_attribute_exists(choice, False)
 
             if choice == key:
-                self.attributes[choice] = True
+                self.set_attribute_exists(choice, True)
 
     @classmethod
     def _default_uper_encode(cls, bit_stream: BitStream, value):
         choice_index = 0
-        choice_attr = list(value.attributes.keys())[0]
+        choice_attr = list(value.__attributes__.keys())[0]
 
-        for attr, exists in value.attributes.items():
+        for attr, exists in value.__attributes__.items():
             if exists:
                 break
             choice_index += 1
             choice_attr = attr
 
-        bit_stream.encode_constraint_number(choice_index, 0, len(value.attributes) - 1)
+        bit_stream.encode_constraint_number(choice_index, 0, len(value.__attributes__) - 1)
 
         attribute = object.__getattribute__(value, choice_attr)
         attribute.encode(bit_stream, attribute.get())
@@ -1917,8 +1932,8 @@ class Choice(ASN1ComposedType):
     @classmethod
     def _default_uper_decode(cls, bit_stream: BitStream):
         result = cls()
-        choice_index = bit_stream.decode_constraint_number(0, len(result.attributes) - 1)
-        choice_attr = list(result.attributes.keys())[choice_index]
+        choice_index = bit_stream.decode_constraint_number(0, len(result.__attributes__) - 1)
+        choice_attr = list(result.__attributes__.keys())[choice_index]
 
         attribute = object.__getattribute__(result, choice_attr)
         setattr(result, choice_attr, attribute.decode(bit_stream))
@@ -1933,7 +1948,7 @@ class SequenceOf(ASN1ArrayOfType, typing.Generic[T]):
             bit_stream.encode_constraint_number(len(value), min_size, max_size)
 
         for elem in value:
-            cls.__element__.encode(bit_stream, elem)
+            cls.ElementType.encode(bit_stream, elem)
 
     @classmethod
     def _default_uper_decode(cls, bit_stream: BitStream, min_size, max_size):
@@ -1942,7 +1957,7 @@ class SequenceOf(ASN1ArrayOfType, typing.Generic[T]):
 
         tmp = list()
         for i in range(min_size):
-            x = cls.__element__.decode(bit_stream)
+            x = cls.ElementType.decode(bit_stream)
             tmp.append(x)
 
         result = cls(tmp)
