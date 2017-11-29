@@ -1396,13 +1396,15 @@ class ASN1ComposedType(ASN1Type):
             raise AttributeError("Can't delete {} attribute!".format(item))
 
     def __eq__(self, other):
-        if not isinstance(other, type(self)):
+        if not self._check_type(other):
             return False
 
         else:
             for attr in other.__attributes__:
-                if other.__attributes__[attr] != self.__attributes__[attr] or getattr(other, attr) != getattr(self,
-                                                                                                              attr):
+                if (
+                                other.__attributes__[attr] != self.__attributes__[attr]
+                        or getattr(other, attr) != getattr(self, attr)
+                ):
                     return False
 
             return True
@@ -1452,7 +1454,7 @@ T = typing.TypeVar('T')
 
 
 class ASN1ArrayOfType(ASN1Type, typing.Generic[T]):
-    ElementType = ASN1Type
+    ElementType = ASN1SimpleType
 
     def __init__(self, source=None):
         if source and isinstance(source, list):
@@ -1592,23 +1594,6 @@ class Enumerated(ASN1SimpleType):
         self._value = value
 
     @classmethod
-    def _default_uper_encode(cls, bit_stream: BitStream, value):
-        if isinstance(value, cls.Value):
-            value = value.value
-
-        enum_values = cls._get_values_except_none()
-        value_index = enum_values.index(value)
-
-        bit_stream.encode_constraint_number(value_index, 0, len(enum_values) - 1)
-
-    @classmethod
-    def _default_uper_decode(cls, bit_stream: BitStream):
-        enum_values = cls._get_values_except_none()
-        value_index = bit_stream.decode_constraint_number(0, len(enum_values) - 1)
-
-        return enum_values[value_index]
-
-    @classmethod
     def _get_values_except_none(cls):
         return [e.value for e in cls.Value][1:]
 
@@ -1632,27 +1617,6 @@ class Integer(ASN1SimpleType):
 
     if typing.TYPE_CHECKING:
         def get(self) -> int: ...
-
-    @classmethod
-    def _default_uper_encode(cls, bit_stream: BitStream, value, min_val=None, max_val=None):
-        if min_val and max_val:
-            if min_val != max_val:
-                bit_stream.encode_constraint_number(value, min_val, max_val)
-
-        else:
-            bit_stream.encode_number(value)
-
-    @classmethod
-    def _default_uper_decode(cls, bit_stream: BitStream, min_val=None, max_val=None):
-        if min_val and max_val:
-            if min_val != max_val:
-                return bit_stream.decode_constraint_number(min_val, max_val)
-
-            else:
-                return cls.init_value()
-
-        else:
-            return bit_stream.decode_number()
 
 
 class PosInteger(ASN1SimpleType):
@@ -1679,14 +1643,6 @@ class Real(ASN1SimpleType):
     def _set_value(self, value):
         self._value = float(value)
 
-    @classmethod
-    def _default_uper_encode(cls, bit_stream: BitStream, value, min_val=None, max_val=None):
-        bit_stream.encode_real(value)
-
-    @classmethod
-    def _default_uper_decode(cls, bit_stream: BitStream, min_val=None, max_val=None):
-        return bit_stream.decode_real()
-
 
 class Boolean(ASN1SimpleType):
     __simple__ = bool
@@ -1700,14 +1656,6 @@ class Boolean(ASN1SimpleType):
 
     def _set_value(self, value):
         self._value = bool(value)
-
-    @classmethod
-    def _default_uper_encode(cls, bit_stream: BitStream, value):
-        bit_stream.append_bit(int(value))
-
-    @classmethod
-    def _default_uper_decode(cls, bit_stream: BitStream):
-        return bool(bit_stream.read_bit())
 
 
 class BitString(ASN1StringWrappedType):
@@ -1726,20 +1674,6 @@ class BitString(ASN1StringWrappedType):
     def _check_type(cls, value):
         return hasattr(value, '__iter__') and all([is_bit(c) for c in value])
 
-    @classmethod
-    def _default_uper_encode(cls, bit_stream: BitStream, value, min_size, max_size):
-        if min_size != max_size:
-            bit_stream.encode_constraint_number(len(value), min_size, max_size)
-
-        bit_stream.append_bits(value.bytes(), len(value))
-
-    @classmethod
-    def _default_uper_decode(cls, bit_stream: BitStream, min_size, max_size):
-        if min_size != max_size:
-            min_size = bit_stream.decode_constraint_number(min_size, max_size)
-
-        return bit_stream.read_bits(min_size)
-
 
 class OctetString(ASN1StringWrappedType):
     __simple__ = bytearray
@@ -1751,52 +1685,12 @@ class OctetString(ASN1StringWrappedType):
     def _check_type(cls, value):
         return super()._check_type(value) or isinstance(value, bytes)
 
-    @classmethod
-    def _default_uper_encode(cls, bit_stream: BitStream, value, min_size, max_size):
-        if min_size != max_size:
-            bit_stream.encode_constraint_number(len(value), min_size, max_size)
-
-        for byte in value:
-            bit_stream.append_byte(byte)
-
-    @classmethod
-    def _default_uper_decode(cls, bit_stream: BitStream, min_size, max_size):
-        if min_size != max_size:
-            min_size = bit_stream.decode_constraint_number(min_size, max_size)
-
-        result = bytearray()
-        for i in range(min_size):
-            byte = bit_stream.read_byte()
-            result.append(byte)
-
-        return result
-
 
 class IA5String(ASN1StringWrappedType):
     __simple__ = str
 
     if typing.TYPE_CHECKING:
         def get(self) -> str: ...
-
-    @classmethod
-    def _default_uper_encode(cls, bit_stream: BitStream, value, min_size, max_size):
-        if min_size != max_size:
-            bit_stream.encode_constraint_number(len(value), min_size, max_size)
-
-        for char in value:
-            bit_stream.encode_constraint_number(ord(char), 0, 127)
-
-    @classmethod
-    def _default_uper_decode(cls, bit_stream: BitStream, min_size, max_size):
-        if min_size != max_size:
-            min_size = bit_stream.decode_constraint_number(min_size, max_size)
-
-        result = ''
-        for i in range(min_size):
-            char = bit_stream.decode_constraint_number(0, 127)
-            result += chr(char)
-
-        return result
 
 
 class NumericString(ASN1StringWrappedType):
@@ -1808,28 +1702,6 @@ class NumericString(ASN1StringWrappedType):
     @classmethod
     def _check_type(cls, value):
         return super()._check_type(value) and str(value).replace(' ', '').isdigit() or not str(value).replace(' ', '')
-
-    @classmethod
-    def _default_uper_encode(cls, bit_stream: BitStream, value, min_size, max_size):
-        if min_size != max_size:
-            bit_stream.encode_constraint_number(len(value), min_size, max_size)
-
-        for num in value:
-            num = int(num) + 1 if num != ' ' else 0
-            bit_stream.encode_constraint_number(num, 0, 10)
-
-    @classmethod
-    def _default_uper_decode(cls, bit_stream: BitStream, min_size, max_size):
-        if min_size != max_size:
-            min_size = bit_stream.decode_constraint_number(min_size, max_size)
-
-        result = ''
-        for i in range(min_size):
-            num = bit_stream.decode_constraint_number(0, 10)
-            num = str(num - 1) if num else ' '
-            result += num
-
-        return result
 
 
 class Sequence(ASN1ComposedType):
@@ -1851,31 +1723,6 @@ class Sequence(ASN1ComposedType):
             raise AttributeError("Attribute {} of {} object can't be Optional!".format(key, type(self).__name__))
 
         self.__attributes__[key] = exists
-
-    @classmethod
-    def _default_uper_encode(cls, bit_stream: BitStream, value):
-        for opt in value.optionals:
-            bit_stream.append_bit(int(value.__attributes__[opt]))
-
-        for attr, exists in value.__attributes__.items():
-            if exists:
-                attribute = object.__getattribute__(value, attr)
-                attribute.encode(bit_stream, attribute.get())
-
-    @classmethod
-    def _default_uper_decode(cls, bit_stream: BitStream):
-        result = cls()
-        opt_mask = bit_stream.read_bits(len(result.__optionals__))
-
-        for i, opt in enumerate(result.__optionals__):
-            result.__attributes__[opt] = bool(opt_mask[i // WORD_SIZE] >> (7 - i) & 1)
-
-        for attr in result.__attributes__:
-            if result.__attributes__[attr]:
-                attribute = object.__getattribute__(result, attr)
-                setattr(result, attr, attribute.decode(bit_stream))
-
-        return result
 
 
 class Set(Sequence):
@@ -1903,56 +1750,10 @@ class Choice(ASN1ComposedType):
             if choice == key:
                 self.set_attribute_exists(choice, True)
 
-    @classmethod
-    def _default_uper_encode(cls, bit_stream: BitStream, value):
-        choice_index = 0
-        choice_attr = list(value.__attributes__.keys())[0]
-
-        for attr, exists in value.__attributes__.items():
-            if exists:
-                break
-            choice_index += 1
-            choice_attr = attr
-
-        bit_stream.encode_constraint_number(choice_index, 0, len(value.__attributes__) - 1)
-
-        attribute = object.__getattribute__(value, choice_attr)
-        attribute.encode(bit_stream, attribute.get())
-
-    @classmethod
-    def _default_uper_decode(cls, bit_stream: BitStream):
-        result = cls()
-        choice_index = bit_stream.decode_constraint_number(0, len(result.__attributes__) - 1)
-        choice_attr = list(result.__attributes__.keys())[choice_index]
-
-        attribute = object.__getattribute__(result, choice_attr)
-        setattr(result, choice_attr, attribute.decode(bit_stream))
-
-        return result
-
 
 class SequenceOf(ASN1ArrayOfType, typing.Generic[T]):
-    @classmethod
-    def _default_uper_encode(cls, bit_stream: BitStream, value, min_size, max_size):
-        if min_size != max_size:
-            bit_stream.encode_constraint_number(len(value), min_size, max_size)
-
-        for elem in value:
-            cls.ElementType.encode(bit_stream, elem)
-
-    @classmethod
-    def _default_uper_decode(cls, bit_stream: BitStream, min_size, max_size):
-        if min_size != max_size:
-            min_size = bit_stream.decode_constraint_number(min_size, max_size)
-
-        tmp = list()
-        for i in range(min_size):
-            x = cls.ElementType.decode(bit_stream)
-            tmp.append(x)
-
-        result = cls(tmp)
-        return result
+    pass
 
 
-class SetOf(SequenceOf, typing.Generic[T]):
+class SetOf(ASN1ArrayOfType, typing.Generic[T]):
     pass
