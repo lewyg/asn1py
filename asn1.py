@@ -926,46 +926,40 @@ class BitStream:
     def acn_encode_real_ieee745_64_little_endian(self, value):
         self.acn_encode_real_little_endian(value, 'd')
 
-    def acn_encode_string_ascii_fix_size(self, value, max_length=None, null_character=None):
+    def acn_encode_string_ascii_fix_size(self, value, max_length=None):
         max_length = max_length or len(value)
         max_length = min(max_length, len(value))
 
         for i in range(max_length):
             char = value[i]
-            if null_character is not None and ord(char) == null_character:
-                break
-
             self.append_byte(ord(char))
 
     def acn_encode_string_ascii_null_terminated(self, value, null_character, max_length):
-        self.acn_encode_string_ascii_fix_size(value, null_character=0, max_length=max_length)
+        self.acn_encode_string_ascii_fix_size(value, max_length=max_length)
         self.append_byte(null_character)
 
     def acn_encode_string_ascii_external_field_determinant(self, value, max_length):
-        self.acn_encode_string_ascii_fix_size(value, max_length=max_length, null_character=0)
+        self.acn_encode_string_ascii_fix_size(value, max_length=max_length)
 
     def acn_encode_string_ascii_internal_field_determinant(self, value, min_length, max_length):
         self.encode_constraint_number(min(len(value), max_length), min_length, max_length)
-        self.acn_encode_string_ascii_fix_size(value, max_length=max_length, null_character=0)
+        self.acn_encode_string_ascii_fix_size(value, max_length=max_length)
 
-    def acn_encode_string_char_index_fix_size(self, value, allowed_charset, max_length=None, null_character=None):
+    def acn_encode_string_char_index_fix_size(self, value, allowed_charset, max_length=None):
         max_length = max_length or len(value)
         max_length = min(max_length, len(value))
 
         for i in range(max_length):
             char = value[i]
-            if null_character is not None and ord(char) == null_character:
-                break
-
             index = allowed_charset.index(char)
             self.encode_constraint_number(index, 0, len(allowed_charset) - 1)
 
     def acn_encode_string_char_index_external_field_determinant(self, value, allowed_charset, max_length):
-        self.acn_encode_string_char_index_fix_size(value, allowed_charset, max_length=max_length, null_character=0)
+        self.acn_encode_string_char_index_fix_size(value, allowed_charset, max_length=max_length)
 
     def acn_encode_string_char_index_internal_field_determinant(self, value, allowed_charset, min_length, max_length):
         self.encode_constraint_number(min(len(value), max_length), min_length, max_length)
-        self.acn_encode_string_char_index_fix_size(value, allowed_charset, max_length=max_length, null_character=0)
+        self.acn_encode_string_char_index_fix_size(value, allowed_charset, max_length=max_length)
 
     def acn_encode_length(self, value, length_size_in_bits):
         self.acn_encode_positive_integer_const_size(value, length_size_in_bits)
@@ -1190,11 +1184,12 @@ class BitStream:
         result = ''
         for i in range(max_length):
             char = self.read_byte()
-
             if char == null_character:
                 break
-
             result += chr(char)
+
+        if result[-1:] != null_character:
+            raise Exception('No null terminated decoded!')
 
         return result
 
