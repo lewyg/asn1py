@@ -1182,13 +1182,14 @@ class BitStream:
 
     def acn_decode_string_ascii_null_terminated(self, null_character, max_length):
         result = ''
+        char = None
         for i in range(max_length):
             char = self.read_byte()
             if char == null_character:
                 break
             result += chr(char)
 
-        if result[-1:] != null_character:
+        if char != null_character:
             raise Exception('No null terminated decoded!')
 
         return result
