@@ -1031,13 +1031,13 @@ class BitStreamTest(TestCase):
         self.b.acn_encode_string_ascii_null_terminated('', 0, 0)
 
         self.b2 = BitStream(self.b)
-        self.assertEqual('', self.b2.acn_decode_string_ascii_null_terminated(0, 0))
+        self.assertEqual('', self.b2.acn_decode_string_ascii_null_terminated(0, 1))
 
     def test_acn_encode_decode_string_ascii_null_terminated_lorem_ipsum(self):
-        self.b.acn_encode_string_ascii_null_terminated('Lorem ipsum', 0, 11)
+        self.b.acn_encode_string_ascii_null_terminated('Lorem ipsum', 0, 12)
 
         self.b2 = BitStream(self.b)
-        self.assertEqual('Lorem ipsum', self.b2.acn_decode_string_ascii_null_terminated(0, 11))
+        self.assertEqual('Lorem ipsum', self.b2.acn_decode_string_ascii_null_terminated(0, 12))
 
     def test_acn_encode_decode_string_ascii_null_terminated_lorem_ipsum_null_e(self):
         self.b.acn_encode_string_ascii_null_terminated('Lorem ipsum', ord('e'), 11)
