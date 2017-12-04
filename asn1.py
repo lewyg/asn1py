@@ -1232,10 +1232,11 @@ class ASN1Type:
         if isinstance(value, ASN1Type):
             value = value.get()
 
-        if self._is_correct_value(value):
-            self._set_value(value)
+        self.assert_correct_value(value)
+        self._set_value(value)
 
-        else:
+    def assert_correct_value(self, value):
+        if not self._is_correct_value(value):
             if isinstance(self, ASN1SimpleType):
                 expected_type = self.__simple__
 
@@ -1251,19 +1252,13 @@ class ASN1Type:
 
             raise ConstraintException(type(self).__name__, value, self.__constraints__, expected_type)
 
-    @classmethod
-    def check_constraints(cls, value):
+    def check_constraints(self, value):
         return True
 
-    @classmethod
-    def _is_correct_value(cls, value):
-        if isinstance(value, ASN1Type):
-            value = value.get()
+    def _is_correct_value(self, value):
+        return self._check_type(value) and self.check_constraints(value)
 
-        return cls._check_type(value) and cls.check_constraints(value)
-
-    @classmethod
-    def _check_type(cls, value):
+    def _check_type(self, value):
         return True
 
     def _set_value(self, value):
@@ -1281,52 +1276,35 @@ class ASN1Type:
 
     # Encoding and decoding functions
 
-    def encode(self, bit_stream: BitStream, encoding=None):
-        self.class_encode(bit_stream, self.get(), encoding)
-
-    @classmethod
-    def class_encode(cls, bit_stream: BitStream, value, encoding=None):
-        if isinstance(value, cls):
-            value = value.get()
-
-        if not cls._is_correct_value(value):
-            raise Exception("{} can't encode {}".format(cls.__name__, value))
+    def encode(self, bit_stream: BitStream, encoding=None, ext_param=None):
+        self.assert_correct_value(self.get())
 
         if encoding == 'acn':
-            cls._acn_encode(bit_stream, value)
+            self._acn_encode(bit_stream, ext_param)
         else:
-            cls._uper_encode(bit_stream, value)
+            self._uper_encode(bit_stream)
 
-    @classmethod
-    def _acn_encode(cls, bit_stream: BitStream, value):
-        pass
+        return self
 
-    @classmethod
-    def _uper_encode(cls, bit_stream: BitStream, value):
-        pass
+    def _acn_encode(self, bit_stream: BitStream, ext_param):
+        raise Exception("Not implemented method!")
 
-    def decode(self, bit_stream: BitStream, encoding=None):
-        self.set(self.class_decode(bit_stream, encoding))
+    def _uper_encode(self, bit_stream: BitStream):
+        raise Exception("Not implemented method!")
 
-    @classmethod
-    def class_decode(cls, bit_stream: BitStream, encoding=None) -> typing.Any:
+    def decode(self, bit_stream: BitStream, encoding=None, ext_param=None):
         if encoding == 'acn':
-            value = cls._acn_decode(bit_stream)
+            self._acn_decode(bit_stream, ext_param)
         else:
-            value = cls._uper_decode(bit_stream)
+            self._uper_decode(bit_stream)
 
-        if not cls._is_correct_value(value):
-            raise Exception("{} can't decode {}".format(cls.__name__, value))
+        return self
 
-        return value
+    def _acn_decode(self, bit_stream: BitStream, ext_param):
+        raise Exception("Not implemented method!")
 
-    @classmethod
-    def _acn_decode(cls, bit_stream: BitStream):
-        return 0
-
-    @classmethod
-    def _uper_decode(cls, bit_stream: BitStream):
-        return 0
+    def _uper_decode(self, bit_stream: BitStream):
+        raise Exception("Not implemented method!")
 
 
 class ASN1SimpleType(ASN1Type):
@@ -1335,16 +1313,14 @@ class ASN1SimpleType(ASN1Type):
     def __init__(self, source=None):
         self.set(source or self.init_value())
 
-    @classmethod
-    def init_value(cls):
-        return cls.__simple__()
+    def init_value(self):
+        return self.__simple__()
 
     def get(self):
         return self._value
 
-    @classmethod
-    def _check_type(cls, value):
-        return isinstance(value, cls.__simple__)
+    def _check_type(self, value):
+        return isinstance(value, self.__simple__)
 
     def _set_value(self, value):
         self._value = value
@@ -1354,9 +1330,8 @@ class ASN1ComposedType(ASN1Type):
     __attributes__ = dict()
     __initialized__ = False
 
-    @classmethod
-    def _check_type(cls, value):
-        return isinstance(value, ASN1ComposedType) and (isinstance(value, cls) or issubclass(cls, type(value)))
+    def _check_type(self, value):
+        return isinstance(value, ASN1ComposedType) and (isinstance(value, type(self)) or isinstance(self, type(value)))
 
     def _set_value(self, value):
         for attr in value.__attributes__:
@@ -1464,8 +1439,7 @@ class ASN1ArrayOfType(ASN1Type, typing.Generic[T]):
 
         self.set(self._list)
 
-    @classmethod
-    def init_value(cls):
+    def init_value(self):
         """:returns size of Array"""
 
         return 0
@@ -1481,8 +1455,7 @@ class ASN1ArrayOfType(ASN1Type, typing.Generic[T]):
     def get(self) -> typing.List[T]:
         return self._list
 
-    @classmethod
-    def _check_type(cls, value):
+    def _check_type(self, value):
         return isinstance(value, list)
 
     def _set_value(self, value):
@@ -1576,16 +1549,14 @@ class Enumerated(ASN1SimpleType):
     if typing.TYPE_CHECKING:
         def get(self) -> Enum: ...
 
-    @classmethod
-    def init_value(cls):
-        enum_values = cls._get_values_except_none()
+    def init_value(self):
+        enum_values = self._get_values_except_none()
         if enum_values:
-            return cls.Value(enum_values[0])
-        return cls.Value.NONE
+            return self.Value(enum_values[0])
+        return self.Value.NONE
 
-    @classmethod
-    def _check_type(cls, value):
-        return super()._check_type(value) or value in [e.value for e in cls.Value]
+    def _check_type(self, value):
+        return super()._check_type(value) or value in [e.value for e in self.Value]
 
     def _set_value(self, value):
         if not isinstance(value, self.Value):
@@ -1593,9 +1564,8 @@ class Enumerated(ASN1SimpleType):
 
         self._value = value
 
-    @classmethod
-    def _get_values_except_none(cls):
-        return [e.value for e in cls.Value][1:]
+    def _get_values_except_none(self):
+        return [e.value for e in self.Value][1:]
 
 
 class Null(ASN1SimpleType):
@@ -1603,8 +1573,7 @@ class Null(ASN1SimpleType):
         super().__init__(None)
         self._value = None
 
-    @classmethod
-    def init_value(cls):
+    def init_value(self):
         return None
 
     def set(self, value):
@@ -1625,8 +1594,7 @@ class PosInteger(ASN1SimpleType):
     if typing.TYPE_CHECKING:
         def get(self) -> int: ...
 
-    @classmethod
-    def _check_type(cls, value):
+    def _check_type(self, value):
         return super()._check_type(value) and value >= 0
 
 
@@ -1636,8 +1604,7 @@ class Real(ASN1SimpleType):
     if typing.TYPE_CHECKING:
         def get(self) -> float: ...
 
-    @classmethod
-    def _check_type(cls, value):
+    def _check_type(self, value):
         return super()._check_type(value) or isinstance(value, int)
 
     def _set_value(self, value):
@@ -1650,8 +1617,7 @@ class Boolean(ASN1SimpleType):
     if typing.TYPE_CHECKING:
         def get(self) -> bool: ...
 
-    @classmethod
-    def _check_type(cls, value):
+    def _check_type(self, value):
         return isinstance(bool(value), bool)
 
     def _set_value(self, value):
@@ -1670,8 +1636,7 @@ class BitString(ASN1StringWrappedType):
 
         super().set(value)
 
-    @classmethod
-    def _check_type(cls, value):
+    def _check_type(self, value):
         return hasattr(value, '__iter__') and all([is_bit(c) for c in value])
 
 
@@ -1681,8 +1646,7 @@ class OctetString(ASN1StringWrappedType):
     if typing.TYPE_CHECKING:
         def get(self) -> bytearray: ...
 
-    @classmethod
-    def _check_type(cls, value):
+    def _check_type(self, value):
         return super()._check_type(value) or isinstance(value, bytes)
 
 
@@ -1699,8 +1663,7 @@ class NumericString(ASN1StringWrappedType):
     if typing.TYPE_CHECKING:
         def get(self) -> str: ...
 
-    @classmethod
-    def _check_type(cls, value):
+    def _check_type(self, value):
         return super()._check_type(value) and str(value).replace(' ', '').isdigit() or not str(value).replace(' ', '')
 
 
