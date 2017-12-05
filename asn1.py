@@ -394,6 +394,9 @@ class BitStream:
             self.append_bit_zero()
 
     def append_bits(self, source, n_bits):
+        if isinstance(source, bitarray):
+            source = source.bytes()
+
         for byte in source:
             if n_bits >= WORD_SIZE:
                 self.append_byte(byte)
@@ -1183,7 +1186,7 @@ class BitStream:
     def acn_decode_string_ascii_null_terminated(self, null_character, max_length):
         result = ''
         char = None
-        for i in range(max_length):
+        for i in range(max_length + 1):
             char = self.read_byte()
             if char == null_character:
                 break
@@ -1194,8 +1197,8 @@ class BitStream:
 
         return result
 
-    def acn_decode_string_ascii_external_field_determinant(self, length, max_length):
-        return self.acn_decode_string_ascii_fix_size(min(length, max_length))
+    def acn_decode_string_ascii_external_field_determinant(self, length, ext_field):
+        return self.acn_decode_string_ascii_fix_size(min(length, ext_field))
 
     def acn_decode_string_ascii_internal_field_determinant(self, min_length, max_length):
         length = self.decode_constraint_number(min_length, max_length)
@@ -1209,8 +1212,8 @@ class BitStream:
 
         return result
 
-    def acn_decode_string_char_index_external_field_determinant(self, length, allowed_charset):
-        return self.acn_decode_string_char_index_fix_size(length, allowed_charset)
+    def acn_decode_string_char_index_external_field_determinant(self, length, allowed_charset, ext_field):
+        return self.acn_decode_string_char_index_fix_size(min(length, ext_field), allowed_charset)
 
     def acn_decode_string_char_index_internal_field_determinant(self, allowed_charset, min_length, max_length):
         length = self.decode_constraint_number(min_length, max_length)
@@ -1282,34 +1285,34 @@ class ASN1Type:
 
     # Encoding and decoding functions
 
-    def encode(self, bit_stream: BitStream, encoding=None, ext_param=None):
+    def encode(self, bit_stream: BitStream, encoding=None, *args):
         self.assert_correct_value(self.get())
 
         if encoding == 'acn':
-            self._acn_encode(bit_stream, ext_param)
+            self.acn_encode(bit_stream, *args)
         else:
-            self._uper_encode(bit_stream)
+            self.uper_encode(bit_stream)
 
         return self
 
-    def _acn_encode(self, bit_stream: BitStream, ext_param):
+    def acn_encode(self, bit_stream: BitStream, *args):
         raise Exception("Not implemented method!")
 
-    def _uper_encode(self, bit_stream: BitStream):
+    def uper_encode(self, bit_stream: BitStream):
         raise Exception("Not implemented method!")
 
-    def decode(self, bit_stream: BitStream, encoding=None, ext_param=None):
+    def decode(self, bit_stream: BitStream, encoding=None, *args):
         if encoding == 'acn':
-            self._acn_decode(bit_stream, ext_param)
+            self.acn_decode(bit_stream, *args)
         else:
-            self._uper_decode(bit_stream)
+            self.uper_decode(bit_stream)
 
         return self
 
-    def _acn_decode(self, bit_stream: BitStream, ext_param):
+    def acn_decode(self, bit_stream: BitStream, *args):
         raise Exception("Not implemented method!")
 
-    def _uper_decode(self, bit_stream: BitStream):
+    def uper_decode(self, bit_stream: BitStream):
         raise Exception("Not implemented method!")
 
 
@@ -1458,11 +1461,11 @@ class ASN1ArrayOfType(ASN1Type, typing.Generic[T]):
 
         return element_list
 
-    def get(self) -> typing.List[T]:
-        return self._list
+    def get(self):
+        return self
 
     def _check_type(self, value):
-        return isinstance(value, list)
+        return isinstance(value, list) or isinstance(value, ASN1ArrayOfType)
 
     def _set_value(self, value):
         self._list = list()
@@ -1682,8 +1685,9 @@ class Sequence(ASN1ComposedType):
 
         for attribute in self.__attributes__:
             try:
-                value = source[attribute]
-                setattr(self, attribute, value)
+                value = getattr(source, attribute) if isinstance(source, ASN1ComposedType) else source[attribute]
+                attribute_type = getattr(self, attribute + "Type")
+                setattr(self, attribute, attribute_type(value))
             except KeyError:
                 delattr(self, attribute)
 

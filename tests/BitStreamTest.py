@@ -1101,7 +1101,7 @@ class BitStreamTest(TestCase):
         self.b.acn_encode_string_char_index_external_field_determinant('', "", 0)
 
         self.b2 = BitStream(self.b)
-        self.assertEqual('', self.b2.acn_decode_string_char_index_external_field_determinant(0, ""))
+        self.assertEqual('', self.b2.acn_decode_string_char_index_external_field_determinant(0, "", 0))
 
     def test_acn_encode_decode_string_char_index_external_field_determinant_lorem_ipsum(self):
         self.b.acn_encode_string_char_index_external_field_determinant(
@@ -1110,7 +1110,7 @@ class BitStreamTest(TestCase):
 
         self.b2 = BitStream(self.b)
         self.assertEqual('Lorem ipsum', self.b2.acn_decode_string_char_index_external_field_determinant(
-            11, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz "
+            11, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz ", 11
         ))
 
     def test_acn_encode_decode_string_char_index_internal_field_determinant_empty(self):
