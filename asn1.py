@@ -1699,19 +1699,19 @@ class Choice(ASN1ComposedType):
             setattr(self, choice['name'], attribute_class(choice['value']))
 
         else:
-            self._set_choice(list(self.__attributes__.keys())[0])
+            self.set_attribute_exists(list(self.__attributes__.keys())[0], True)
 
     def __setattr__(self, key, value):
         super().__setattr__(key, value)
 
-        self._set_choice(key)
+        self.set_attribute_exists(key, True)
 
-    def _set_choice(self, key):
-        for choice in self.__attributes__:
-            self.set_attribute_exists(choice, False)
+    def set_attribute_exists(self, key, exists: bool):
+        if exists:
+            for choice in self.__attributes__:
+                self.__attributes__[choice] = False
 
-            if choice == key:
-                self.set_attribute_exists(choice, True)
+        self.__attributes__[key] = exists
 
 
 class SequenceOf(ASN1ArrayOfType, typing.Generic[T]):
