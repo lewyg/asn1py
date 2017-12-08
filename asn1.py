@@ -58,6 +58,9 @@ class bitarray:
         self._data = bytearray(source)
         self._bitsize = len(self._data) * WORD_SIZE
 
+    def set_size(self, new_size):
+        self._bitsize = new_size
+
     def __getitem__(self, item):
         if isinstance(item, slice):
             return self.__get_slice(item)
@@ -451,6 +454,12 @@ class BitStream:
 
         if n_bits % WORD_SIZE:
             result.append(self.read_partial_byte(n_bits % WORD_SIZE))
+
+        return result
+
+    def read_bitarray(self, size):
+        result = bitarray(self.read_bits(size))
+        result.set_size(size)
 
         return result
 
@@ -1385,10 +1394,9 @@ class ASN1ComposedType(ASN1Type):
 
         else:
             for attr in other.__attributes__:
-                if (
-                                other.__attributes__[attr] != self.__attributes__[attr]
-                        or getattr(other, attr) != getattr(self, attr)
-                ):
+                if other.__attributes__[attr] != self.__attributes__[attr]:
+                    return False
+                elif other.__attributes__[attr] and getattr(other, attr) != getattr(self, attr):
                     return False
 
             return True
@@ -1524,8 +1532,8 @@ class ASN1ArrayOfType(ASN1Type, typing.Generic[T]):
             raise StopIteration
 
     def __eq__(self, other):
-        if isinstance(other, self.__class__):
-            other = other.get()
+        if isinstance(other, ASN1ArrayOfType):
+            other = other._list
 
         if not isinstance(other, list):
             return False
