@@ -1,3 +1,4 @@
+import json
 import struct
 import sys
 import typing
@@ -1292,6 +1293,9 @@ class ASN1Type:
     def __repr__(self):
         return str(self.get())
 
+    def vars(self):
+        return self.get()
+
     # Encoding and decoding functions
 
     def encode(self, bit_stream: BitStream, encoding=None, *args):
@@ -1404,8 +1408,14 @@ class ASN1ComposedType(ASN1Type):
     def __repr__(self):
         return str(vars(self))
 
+    def vars(self):
+        return {
+            attr: getattr(self, '_' + attr).vars()
+            for attr in self.__attributes__ if self.__attributes__[attr]
+        }
+
     def __str__(self):
-        return str({attr: str(getattr(self, attr)) for attr in self.__attributes__ if self.__attributes__[attr]})
+        return json.dumps(self.vars(), indent=2)
 
 
 class ASN1StringWrappedType(ASN1SimpleType):
@@ -1545,8 +1555,11 @@ class ASN1ArrayOfType(ASN1Type, typing.Generic[T]):
 
             return True
 
+    def vars(self):
+        return [elem.vars() for elem in self._list]
+
     def __str__(self):
-        return str([str(elem) for elem in self._list])
+        return json.dumps(self.vars(), indent=2)
 
 
 class Enumerated(ASN1SimpleType):
