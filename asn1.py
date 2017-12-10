@@ -1353,14 +1353,21 @@ class ASN1ComposedType(ASN1Type):
     __initialized__ = False
 
     def _check_type(self, value):
-        return isinstance(value, ASN1ComposedType) and (isinstance(value, type(self)) or isinstance(self, type(value)))
+        return (
+            (isinstance(value, ASN1ComposedType) and (isinstance(value, type(self)) or isinstance(self, type(value))))
+            or isinstance(value, dict)
+        )
 
     def _set_value(self, value):
-        for attr in value.__attributes__:
-            if value.__attributes__[attr]:
-                setattr(self, attr, object.__getattribute__(value, attr))
+        if isinstance(value, dict):
+            self._init_from_dict(value)
 
-            self.__attributes__[attr] = value.__attributes__[attr]
+        else:
+            for attr in value.__attributes__:
+                if value.__attributes__[attr]:
+                    setattr(self, attr, object.__getattribute__(value, attr))
+
+                self.__attributes__[attr] = value.__attributes__[attr]
 
     def _assert_attribute_present(self, item):
         if item in self.__attributes__ and not self.__attributes__[item]:
@@ -1371,6 +1378,9 @@ class ASN1ComposedType(ASN1Type):
 
     def set_attribute_exists(self, key, exists: bool):
         self.__attributes__[key] = exists
+
+    def _init_from_dict(self, value):
+        pass
 
     def __getattr__(self, item):
         raise AttributeError("Attribute {} not exists!".format(item))
@@ -1599,8 +1609,8 @@ class Enumerated(ASN1SimpleType):
 
 
 class Null(ASN1SimpleType):
-    def __init__(self):
-        super().__init__(None)
+    def __init__(self, source=None):
+        super().__init__(source)
         self._value = None
 
     def init_value(self):
@@ -1704,11 +1714,13 @@ class Sequence(ASN1ComposedType):
         if not source:  # default initialization
             return
 
+        self.set(source)
+
+    def _init_from_dict(self, source):
         for attribute in self.__attributes__:
             try:
-                value = getattr(source, attribute) if isinstance(source, ASN1ComposedType) else source[attribute]
-                attribute_type = getattr(self, attribute + "Type")
-                setattr(self, attribute, attribute_type(value))
+                value = source[attribute]
+                setattr(self, attribute, value)
             except KeyError:
                 delattr(self, attribute)
 
@@ -1724,13 +1736,15 @@ class Set(Sequence):
 
 
 class Choice(ASN1ComposedType):
-    def _init_choice(self, choice):
-        if choice:
-            attribute_class = getattr(self, "{}Type".format(choice['name']))
-            setattr(self, choice['name'], attribute_class(choice['value']))
+    def _init_choice(self, source):
+        if source:
+            self.set(source)
 
         else:
             self.set_attribute_exists(list(self.__attributes__.keys())[0], True)
+
+    def _init_from_dict(self, source):
+        setattr(self, source['name'], source['value'])
 
     def __setattr__(self, key, value):
         super().__setattr__(key, value)
