@@ -17,15 +17,39 @@ NAN = float('nan')
 #        Exceptions         #
 #############################
 
-class ASN1Erorr(Exception):
+class ASN1Error(Exception):
     pass
 
 
-class ConstraintException(ASN1Erorr):
+class ConstraintException(ASN1Error):
     def __init__(self, class_name, value, constraints, expected_type):
         message = "Constraint failed! {} object can't be {} ( {} - {} )".format(
             class_name, value, constraints, expected_type
         )
+        super().__init__(message)
+
+
+class UnexpectedOption(ASN1Error):
+    def __init__(self, cls, option):
+        message = "Unexpected option {} for type {}".format(option, cls.__name__)
+        super().__init__(message)
+
+
+class UnexpectedValueException(ASN1Error):
+    def __init__(self, cls, value):
+        message = "Unexpected value {} for {}".format(value, cls.__name__)
+        super().__init__(message)
+
+
+class UnexpectedOptionIndex(ASN1Error):
+    def __init__(self, cls, option):
+        message = "Unexpected option index {} for type {}".format(option, cls.__name__)
+        super().__init__(message)
+
+
+class NotImplementedEncoding(ASN1Error):
+    def __init__(self, encoding):
+        message = "Not implemented encoding, decoding method for {}".format(encoding)
         super().__init__(message)
 
 
@@ -1203,7 +1227,7 @@ class BitStream:
             result += chr(char)
 
         if char != null_character:
-            raise Exception('No null terminated decoded!')
+            raise ValueError('No null terminated decoded!')
 
         return result
 
@@ -1309,10 +1333,10 @@ class ASN1Type:
         return self
 
     def acn_encode(self, bit_stream: BitStream, *args):
-        raise Exception("Not implemented method!")
+        raise NotImplementedEncoding('acn')
 
     def uper_encode(self, bit_stream: BitStream):
-        raise Exception("Not implemented method!")
+        raise NotImplementedEncoding('acn')
 
     def decode(self, bit_stream: BitStream, encoding=None, *args):
         if encoding == 'acn':
@@ -1323,10 +1347,10 @@ class ASN1Type:
         return self
 
     def acn_decode(self, bit_stream: BitStream, *args):
-        raise Exception("Not implemented method!")
+        raise NotImplementedEncoding('uper')
 
     def uper_decode(self, bit_stream: BitStream):
-        raise Exception("Not implemented method!")
+        raise NotImplementedEncoding('uper')
 
 
 class ASN1SimpleType(ASN1Type):
@@ -1595,6 +1619,9 @@ class Enumerated(ASN1SimpleType):
             return self.Value(enum_values[0])
         return self.Value.NONE
 
+    def _get_values_except_none(self):
+        return [e.value for e in self.Value][1:]
+
     def _check_type(self, value):
         return super()._check_type(value) or value in [e.value for e in self.Value]
 
@@ -1603,9 +1630,6 @@ class Enumerated(ASN1SimpleType):
             value = self.Value(value)
 
         self._value = value
-
-    def _get_values_except_none(self):
-        return [e.value for e in self.Value][1:]
 
 
 class Null(ASN1SimpleType):
