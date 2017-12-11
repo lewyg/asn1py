@@ -1485,6 +1485,9 @@ class ASN1StringWrappedType(ASN1SimpleType):
     def _set_value(self, value):
         self._value = self._wrap_string(self.__simple__, self.set)(value)
 
+    def vars(self):
+        return str(self._value)
+
 
 T = typing.TypeVar('T')
 
@@ -1495,8 +1498,10 @@ class ASN1ArrayOfType(ASN1Type, typing.Generic[T]):
     def __init__(self, source=None):
         if source and isinstance(source, list):
             self._list = source
+        elif source:
+            self._list = self._get_new_list(source)
         else:
-            self._list = self._get_new_list(source or self.init_value())
+            self._list = self.init_value()
 
         self.set(self._list)
 
@@ -1631,6 +1636,9 @@ class Enumerated(ASN1SimpleType):
 
         self._value = value
 
+    def vars(self):
+        return self._value.value
+
 
 class Null(ASN1SimpleType):
     def __init__(self, source=None):
@@ -1734,12 +1742,6 @@ class NumericString(ASN1StringWrappedType):
 class Sequence(ASN1ComposedType):
     __optionals__ = list()
 
-    def _init_sequence(self, source):
-        if not source:  # default initialization
-            return
-
-        self.set(source)
-
     def _init_from_dict(self, source):
         for attribute in self.__attributes__:
             try:
@@ -1760,13 +1762,6 @@ class Set(Sequence):
 
 
 class Choice(ASN1ComposedType):
-    def _init_choice(self, source):
-        if source:
-            self.set(source)
-
-        else:
-            self.set_attribute_exists(list(self.__attributes__.keys())[0], True)
-
     def _init_from_dict(self, source):
         setattr(self, source['name'], source['value'])
 
