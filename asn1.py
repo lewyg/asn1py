@@ -63,14 +63,14 @@ class bitarray:
         self._data = bytearray()
         self._bitsize = 0
 
-        if isinstance(source, int) and source > 0:
-            self._init_from_size(source)
-
-        elif isinstance(source, bytearray) or isinstance(source, bytes):
+        if isinstance(source, bytearray) or isinstance(source, bytes):
             self._init_from_bytes(source)
 
         elif self.__iterable_bits(source):
             self._init_from_iterable(source)
+
+        elif isinstance(source, int) and source > 0:
+            self._init_from_size(source)
 
     def _init_from_size(self, size):
         self._data = bytearray(get_byte_length_from_bit_length(size))
@@ -1378,8 +1378,11 @@ class ASN1ComposedType(ASN1Type):
 
     def _check_type(self, value):
         return (
-            (isinstance(value, ASN1ComposedType) and (isinstance(value, type(self)) or isinstance(self, type(value))))
-            or isinstance(value, dict)
+                (
+                        isinstance(value, ASN1ComposedType)
+                        and (isinstance(value, type(self)) or isinstance(self, type(value)))
+                )
+                or isinstance(value, dict)
         )
 
     def _set_value(self, value):
@@ -1508,7 +1511,7 @@ class ASN1ArrayOfType(ASN1Type, typing.Generic[T]):
     def init_value(self):
         """:returns size of Array"""
 
-        return 0
+        return []
 
     def _get_new_list(self, size):
         element_list = list()
